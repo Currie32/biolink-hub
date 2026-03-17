@@ -1,0 +1,36 @@
+[project]
+name = "biolink-hub"
+version = "0.2.0"
+description = "Open Biomedical Knowledge Explorer"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "httpx>=0.27",
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+# For BioExtract model training (install on Colab)
+train = [
+    "transformers>=4.40",
+    "datasets>=2.18",
+    "peft>=0.10",
+    "accelerate>=0.28",
+    "seqeval>=1.2.2",
+]
+# For ONNX inference optimization
+onnx = [
+    "optimum[onnxruntime]>=1.18",
+]
+
+[project.scripts]
+biolink = "pipeline.cli:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pipeline*", "api*", "bioextract*"]

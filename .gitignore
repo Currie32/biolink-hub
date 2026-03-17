@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+*.db
+*.egg-info/
+dist/
+build/
+.env
+.env.local
+.DS_Store
+node_modules/
+bioextract/dictionaries/data/
+models/

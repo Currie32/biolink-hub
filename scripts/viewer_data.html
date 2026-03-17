@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioExtract Viewer</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --surface: #ffffff;
+    --border: #e0dbd4;
+    --text: #2c2c2c;
+    --text-muted: #777;
+    --accent: #4a6fa5;
+    --gene: #2d7d46;
+    --disease: #c0392b;
+    --chemical: #2980b9;
+    --variant: #8e44ad;
+    --organism: #d4a017;
+    --cell-type: #16a085;
+    --pathway: #e67e22;
+    --tp: #27ae60;
+    --fp: #e74c3c;
+    --fn: #f39c12;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header h1 { font-size: 18px; font-weight: 600; white-space: nowrap; }
+
+  .nav-controls { display: flex; align-items: center; gap: 8px; }
+  .nav-controls button {
+    padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); cursor: pointer; font-size: 14px;
+  }
+  .nav-controls button:hover { background: #f0ede8; }
+  .nav-controls button:disabled { opacity: 0.4; cursor: default; }
+  .nav-controls span { font-size: 14px; color: var(--text-muted); min-width: 80px; text-align: center; }
+
+  .pmid-label { font-size: 14px; color: var(--text-muted); margin-left: auto; }
+  .pmid-label a { color: var(--accent); text-decoration: none; }
+  .pmid-label a:hover { text-decoration: underline; }
+
+  .load-controls { display: flex; align-items: center; gap: 8px; margin-left: 16px; }
+  .load-controls input[type="file"] { font-size: 13px; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+
+  /* Stats bar */
+  .stats-bar { display: flex; gap: 24px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 16px; min-width: 120px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+  .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-value.good { color: var(--tp); }
+  .stat-value.warn { color: var(--fn); }
+  .stat-value.bad  { color: var(--fp); }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-muted); margin-bottom: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .legend-dot.tp { background: var(--tp); }
+  .legend-dot.fp { background: var(--fp); }
+  .legend-dot.fn { background: var(--fn); }
+  .legend-line { display: inline-block; width: 20px; height: 2px; vertical-align: middle; }
+
+  /* Abstract panel */
+  .abstract-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 24px; margin-bottom: 16px;
+    position: relative;
+  }
+  .abstract-panel h2 {
+    font-size: 14px; font-weight: 600; margin-bottom: 12px;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .abstract-text-wrapper { position: relative; }
+  .abstract-text {
+    font-size: 15px; line-height: 2.4; white-space: pre-wrap; word-wrap: break-word;
+    position: relative; z-index: 2;
+  }
+  .arc-svg {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 3; overflow: visible;
+  }
+  .arc-svg path { fill: none; stroke-width: 1.5; }
+  .arc-svg text {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 10px; font-weight: 600;
+  }
+
+  .hint-text {
+    font-size: 12px; color: var(--text-muted); margin-top: 8px;
+    font-style: italic;
+  }
+
+  /* Entity highlights */
+  .entity-highlight {
+    border-radius: 3px; padding: 1px 2px; cursor: pointer; position: relative;
+    transition: box-shadow 0.15s;
+  }
+  .entity-highlight:hover { filter: brightness(0.92); }
+
+  .entity-highlight[data-type="GENE"]     { background: #d5f5e3; border-bottom: 2px solid var(--gene); }
+  .entity-highlight[data-type="DISEASE"]  { background: #fadbd8; border-bottom: 2px solid var(--disease); }
+  .entity-highlight[data-type="CHEMICAL"] { background: #d6eaf8; border-bottom: 2px solid var(--chemical); }
+  .entity-highlight[data-type="VARIANT"]  { background: #e8daef; border-bottom: 2px solid var(--variant); }
+  .entity-highlight[data-type="ORGANISM"] { background: #fef9e7; border-bottom: 2px solid var(--organism); }
+  .entity-highlight[data-type="CELL_TYPE"]{ background: #d1f2eb; border-bottom: 2px solid var(--cell-type); }
+  .entity-highlight[data-type="PATHWAY"]  { background: #fdebd0; border-bottom: 2px solid var(--pathway); }
+
+  .entity-highlight.gold-only {
+    background: none;
+    border-bottom: 2px dashed #e67e22;
+    text-decoration: underline wavy #e67e22;
+    text-underline-offset: 3px;
+  }
+
+  /* Selected entity gets a ring */
+  .entity-highlight.selected {
+    box-shadow: 0 0 0 2px var(--accent);
+    z-index: 5;
+  }
+  /* Related entities glow when an entity is selected */
+  .entity-highlight.related {
+    box-shadow: 0 0 0 2px #f39c12;
+  }
+  /* Dim unrelated entities */
+  .entity-highlight.dimmed { opacity: 0.35; }
+
+  .entity-tooltip {
+    display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%); background: #333; color: white;
+    padding: 6px 10px; border-radius: 6px; font-size: 12px;
+    white-space: nowrap; z-index: 50; pointer-events: none;
+  }
+  .entity-highlight:hover .entity-tooltip { display: block; }
+
+  /* Side-by-side panels */
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px; overflow-x: auto;
+  }
+  .panel h2 {
+    font-size: 14px; font-weight: 600; margin-bottom: 12px;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel h2 .count {
+    background: #eee; padding: 2px 8px; border-radius: 10px;
+    font-size: 12px; font-weight: 500;
+  }
+
+  /* Entity table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 6px 8px; border-bottom: 2px solid var(--border);
+    font-weight: 600; font-size: 12px; color: var(--text-muted); text-transform: uppercase;
+  }
+  td { padding: 5px 8px; border-bottom: 1px solid #f0ede8; vertical-align: top; }
+  tr:hover td { background: #faf8f5; }
+
+  .type-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; color: white;
+  }
+  .type-badge.GENE      { background: var(--gene); }
+  .type-badge.DISEASE   { background: var(--disease); }
+  .type-badge.CHEMICAL  { background: var(--chemical); }
+  .type-badge.VARIANT   { background: var(--variant); }
+  .type-badge.ORGANISM  { background: var(--organism); }
+  .type-badge.CELL_TYPE { background: var(--cell-type); }
+  .type-badge.PATHWAY   { background: var(--pathway); }
+
+  .match-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .match-dot.tp { background: var(--tp); }
+  .match-dot.fp { background: var(--fp); }
+  .match-dot.fn { background: var(--fn); }
+
+  .confidence-bar {
+    display: inline-block; height: 4px; border-radius: 2px;
+    background: var(--accent); vertical-align: middle;
+  }
+  .canonical-id { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+
+  /* Relationship cards */
+  .rel-card {
+    padding: 8px 12px; border: 1px solid #eee; border-radius: 8px;
+    margin-bottom: 6px; font-size: 13px; display: flex; align-items: center; gap: 8px;
+    cursor: pointer; transition: background 0.1s;
+  }
+  .rel-card:hover { background: #faf8f5; }
+  .rel-card.active { background: #eef4fb; border-color: var(--accent); }
+  .rel-arrow { color: var(--text-muted); font-size: 16px; flex-shrink: 0; }
+  .rel-type {
+    font-size: 11px; padding: 2px 6px; border-radius: 4px;
+    background: #eee; color: #555; font-weight: 500; flex-shrink: 0;
+  }
+  .rel-subject, .rel-object { font-weight: 500; }
+  .rel-confidence { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+  .rel-context { font-size: 11px; color: var(--text-muted); margin-left: 4px; }
+  .rel-card.negated { border-left: 3px solid var(--fp); }
+  .diff-tp { border-left: 3px solid var(--tp); }
+  .diff-fp { border-left: 3px solid var(--fp); }
+  .diff-fn { border-left: 3px solid var(--fn); background: #fef9e7; opacity: 0.8; }
+
+  .dir-positive::before { content: '\25B2'; color: var(--tp); font-size: 10px; margin-right: 3px; }
+  .dir-negative::before { content: '\25BC'; color: var(--fp); font-size: 10px; margin-right: 3px; }
+  .dir-neutral::before  { content: '\25CF'; color: var(--text-muted); font-size: 8px; margin-right: 3px; }
+
+  /* Filter bar */
+  .filter-bar { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 3px 10px; border: 1px solid var(--border); border-radius: 14px;
+    background: var(--surface); cursor: pointer; font-size: 12px;
+  }
+  .filter-btn.active { background: #e8e2da; font-weight: 600; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state h2 { font-size: 20px; margin-bottom: 8px; color: var(--text); }
+  .empty-state p { font-size: 14px; max-width: 500px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BioExtract Viewer</h1>
+  <div class="nav-controls">
+    <button id="prev-btn" onclick="navigate(-1)">&larr; Prev</button>
+    <span id="nav-label">0 / 0</span>
+    <button id="next-btn" onclick="navigate(1)">Next &rarr;</button>
+  </div>
+  <div class="pmid-label" id="pmid-label"></div>
+  <div class="load-controls">
+    <input type="file" id="file-input" accept=".json" onchange="loadFile(event)">
+  </div>
+</header>
+
+<div class="container">
+  <div id="empty-state" class="empty-state">
+    <h2>No data loaded</h2>
+    <p>Generate viewer data with:<br>
+    <code>python scripts/generate_viewer_data.py --limit 5 --ensemble</code><br>
+    Then load <code>viewer_data.json</code> using the file picker above.</p>
+  </div>
+
+  <div id="main-content" style="display:none;">
+    <div class="stats-bar" id="stats-bar"></div>
+
+    <div class="legend" id="legend">
+      <div class="legend-item"><span class="legend-dot tp"></span> Matched (TP)</div>
+      <div class="legend-item"><span class="legend-dot fp"></span> False Positive</div>
+      <div class="legend-item"><span class="legend-dot fn"></span> False Negative (missed)</div>
+    </div>
+
+    <!-- Abstract with entity highlights + relationship arcs -->
+    <div class="abstract-panel">
+      <h2>Abstract</h2>
+      <div class="abstract-text-wrapper">
+        <svg class="arc-svg" id="arc-svg"></svg>
+        <div class="abstract-text" id="abstract-text"></div>
+      </div>
+      <div class="hint-text" id="hint-text">Click an entity to see its relationships. Click again to deselect.</div>
+    </div>
+
+    <div class="filter-bar" id="entity-filter"></div>
+
+    <!-- Entities side-by-side -->
+    <div class="panels" id="entity-panels">
+      <div class="panel" id="pred-entities-panel">
+        <h2>Predicted Entities <span class="count" id="pred-ent-count">0</span></h2>
+        <table id="pred-entities-table">
+          <thead><tr><th></th><th>Text</th><th>Type</th><th>ID</th><th>Conf</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel" id="gold-entities-panel">
+        <h2>Gold Entities <span class="count" id="gold-ent-count">0</span></h2>
+        <table id="gold-entities-table">
+          <thead><tr><th></th><th>Text</th><th>Type</th><th>ID</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Relationships side-by-side -->
+    <div class="panels" id="rel-panels">
+      <div class="panel" id="pred-rels-panel">
+        <h2>Predicted Relationships <span class="count" id="pred-rel-count">0</span></h2>
+        <div id="pred-rels"></div>
+      </div>
+      <div class="panel" id="gold-rels-panel">
+        <h2>Gold Relationships <span class="count" id="gold-rel-count">0</span></h2>
+        <div id="gold-rels"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let DATA = [{"pmid": "15000256", "text": "Single-strand conformation polymorphism analysis of the FMR1 gene in autistic and mentally retarded children in Japan. Fragile X syndrome is one of the most common causes of mental retardation in males, and patients with fragile X syndrome occasionally develop autism. It is usually caused by an expansion of the trinucleotide repeat in the 5'-untranslated region of the FMR1 gene, but in a small number of patients deletions and point mutations have been identified. We screened all 17 exons of the FMR1 gene for mutations in 90 autistic or mentally retarded children using polymerase chain reaction (PCR)-single strand conformation polymorphism (SSCP) analysis. No mutations were found in 76 male patients. However, one female patient was heterozygous for a normal allele and a mutant allele with an A to C substitution at nucleotide 879 in exon 9. This mutation was not found in 50 controls. Reverse transcription-PCR revealed that a large proportion of the mutant transcripts were spliced aberrantly, causing premature termination of the protein synthesis. Although uncommon, point mutations in the FMR1 gene may be a cause of autism and mental retardation in Japanese patients.", "gold": {"entities": [{"text": "FMR1", "type": "GENE", "start": 56, "end": 60, "identifier": "2332"}, {"text": "autistic", "type": "DISEASE", "start": 69, "end": 77, "identifier": "D001321"}, {"text": "mentally retarded", "type": "DISEASE", "start": 82, "end": 99, "identifier": "D008607"}, {"text": "Fragile X syndrome", "type": "DISEASE", "start": 119, "end": 137, "identifier": "D005600"}, {"text": "mental retardation", "type": "DISEASE", "start": 174, "end": 192, "identifier": "D008607"}, {"text": "patients", "type": "ORGANISM", "start": 207, "end": 215, "identifier": "9606"}, {"text": "autism", "type": "DISEASE", "start": 261, "end": 267, "identifier": "D001321"}, {"text": "patient", "type": "ORGANISM", "start": 729, "end": 736, "identifier": "9606"}, {"text": "A to C substitution at nucleotide 879", "type": "VARIANT", "start": 802, "end": 839, "identifier": "rs782013865"}], "relationships": [{"subject": "A to C substitution at nucleotide 879", "object": "autism", "type": "upregulates", "direction": "positive", "novel": "Novel"}, {"subject": "A to C substitution at nucleotide 879", "object": "mental retardation", "type": "upregulates", "direction": "positive", "novel": "Novel"}, {"subject": "A to C substitution at nucleotide 879", "object": "fragile X syndrome", "type": "associated_with", "direction": "neutral", "novel": "Novel"}, {"subject": "FMR1", "object": "autism", "type": "associated_with", "direction": "neutral", "novel": "Novel"}, {"subject": "FMR1", "object": "mental retardation", "type": "associated_with", "direction": "neutral", "novel": "Novel"}, {"subject": "FMR1", "object": "fragile X syndrome", "type": "associated_with", "direction": "neutral", "novel": "No"}]}, "predicted": {"entities": [{"text": "FMR1", "type": "GENE", "start": 47, "end": 51, "canonical_id": "gene:2332", "canonical_name": "FMR1", "confidence": 0.95}, {"text": "Fragile X syndrome", "type": "DISEASE", "start": 100, "end": 118, "canonical_id": "doid:14261", "canonical_name": "fragile X syndrome", "confidence": 0.95}, {"text": "mental retardation", "type": "DISEASE", "start": 147, "end": 165, "canonical_id": "doid:1059", "canonical_name": "intellectual disability", "confidence": 0.95}, {"text": "autism", "type": "DISEASE", "start": 203, "end": 209, "canonical_id": "doid:12849", "canonical_name": "autistic disorder", "confidence": 0.95}, {"text": "autistic", "type": "DISEASE", "start": 23, "end": 31, "canonical_id": "doid:12849", "canonical_name": "autistic disorder", "confidence": 0.775}, {"text": "mentally retarded", "type": "DISEASE", "start": 36, "end": 53, "canonical_id": "mesh:D019989", "canonical_name": "Persons with Intellectual Disabilities", "confidence": 0.85}, {"text": "FMR1 gene", "type": "GENE", "start": 45, "end": 54, "canonical_id": "gene:158521", "canonical_name": "FMR1NB", "confidence": 0.7}], "relationships": [{"subject": "Fragile X syndrome", "predicate": "causes", "object": "mental retardation", "type": "causes", "direction": "positive", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "Fragile X syndrome", "predicate": "associated_with", "object": "autistic", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "FMR1", "predicate": "associated_with", "object": "Fragile X syndrome", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "FMR1", "predicate": "associated_with", "object": "autistic", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "FMR1", "predicate": "associated_with", "object": "mental retardation", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": null}}], "method": "ensemble"}}, {"pmid": "26991973", "text": "MOL1 is required for cambium homeostasis in Arabidopsis. Plants maintain pools of pluripotent stem cells which allow them to constantly produce new tissues and organs. Stem cell homeostasis in shoot and root tips depends on negative regulation by ligand-receptor pairs of the CLE peptide and leucine-rich repeat receptor-like kinase (LRR-RLK) families. However, regulation of the cambium, the stem cell niche required for lateral growth of shoots and roots, is poorly characterized. Here we show that the LRR-RLK MOL1 is necessary for cambium homeostasis in Arabidopsis thaliana. By employing promoter reporter lines, we reveal that MOL1 is active in a domain that is distinct from the domain of the positively acting CLE41/PXY signaling module. In particular, we show that MOL1 acts in an opposing manner to the CLE41/PXY module and that changing the domain or level of MOL1 expression both result in disturbed cambium organization. Underlining discrete roles of MOL1 and PXY, both LRR-RLKs are not able to replace each other when their expression domains are interchanged. Furthermore, MOL1 but not PXY is able to rescue CLV1 deficiency in the shoot apical meristem. By identifying genes mis-expressed in mol1 mutants, we demonstrate that MOL1 represses genes associated with stress-related ethylene and jasmonic acid hormone signaling pathways which have known roles in coordinating lateral growth of the Arabidopsis stem. Our findings provide evidence that common regulatory mechanisms in different plant stem cell niches are adapted to specific niche anatomies and emphasize the importance of a complex spatial organization of intercellular signaling cascades for a strictly bidirectional tissue production.", "gold": {"entities": [{"text": "MOL1", "type": "GENE", "start": 0, "end": 4, "identifier": "835209"}, {"text": "Arabidopsis", "type": "ORGANISM", "start": 44, "end": 55, "identifier": "3702"}, {"text": "CLE peptide", "type": "GENE", "start": 276, "end": 287, "identifier": "820713,821957,832170"}, {"text": "leucine-rich repeat receptor-like kinase", "type": "GENE", "start": 292, "end": 332, "identifier": "835209,836269"}, {"text": "LRR-RLK", "type": "GENE", "start": 334, "end": 341, "identifier": "835209,836269"}, {"text": "Arabidopsis thaliana", "type": "ORGANISM", "start": 558, "end": 578, "identifier": "3702"}, {"text": "CLE41", "type": "GENE", "start": 718, "end": 723, "identifier": "822075"}, {"text": "PXY", "type": "GENE", "start": 724, "end": 727, "identifier": "836269"}, {"text": "LRR-RLKs", "type": "GENE", "start": 983, "end": 991, "identifier": "835209,836269"}, {"text": "CLV1", "type": "GENE", "start": 1123, "end": 1127, "identifier": "843915"}, {"text": "ethylene", "type": "CHEMICAL", "start": 1293, "end": 1301, "identifier": "D005030"}, {"text": "jasmonic acid", "type": "CHEMICAL", "start": 1306, "end": 1319, "identifier": "C011006"}], "relationships": [{"subject": "MOL1", "object": "jasmonic acid", "type": "associated_with", "direction": "neutral", "novel": "Novel"}, {"subject": "MOL1", "object": "ethylene", "type": "associated_with", "direction": "neutral", "novel": "Novel"}, {"subject": "MOL1", "object": "CLV1", "type": "upregulates", "direction": "positive", "novel": "Novel"}, {"subject": "CLE41", "object": "PXY", "type": "binds", "direction": "neutral", "novel": "No"}]}, "predicted": {"entities": [{"text": "MOL1", "type": "GENE", "start": 0, "end": 4, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "CLE peptide", "type": "GENE", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "leucine-rich repeat receptor-like kinase", "type": "GENE", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "LRR-RLK", "type": "GENE", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "CLE41", "type": "GENE", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.85}, {"text": "PXY", "type": "GENE", "start": 0, "end": 0, "canonical_id": "gene:92370", "canonical_name": "PXYLP1", "confidence": 0.6}, {"text": "CLV1", "type": "GENE", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "ethylene", "type": "CHEMICAL", "start": 0, "end": 0, "canonical_id": "mesh:D005027", "canonical_name": "Ethylene Oxide", "confidence": 0.775}, {"text": "jasmonic acid", "type": "CHEMICAL", "start": 0, "end": 0, "canonical_id": "chebi:18292", "canonical_name": "jasmonic acid", "confidence": 0.85}, {"text": "Arabidopsis thaliana", "type": "ORGANISM", "start": 0, "end": 0, "canonical_id": "taxon:3702", "canonical_name": "Arabidopsis thaliana", "confidence": 0.95}, {"text": "Arabidopsis", "type": "ORGANISM", "start": 0, "end": 0, "canonical_id": "mesh:D017360", "canonical_name": "Arabidopsis", "confidence": 0.95}, {"text": "CLV1 deficiency", "type": "DISEASE", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.85}, {"text": "ethylene signaling pathway", "type": "PATHWAY", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.85}, {"text": "jasmonic acid hormone signaling pathway", "type": "PATHWAY", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.85}, {"text": "CLE41/PXY signaling module", "type": "PATHWAY", "start": 0, "end": 0, "canonical_id": null, "canonical_name": null, "confidence": 0.85}], "relationships": [{"subject": "MOL1", "predicate": "required for", "object": "CLE41/PXY signaling module", "type": "regulates", "direction": "negative", "negated": false, "confidence": 0.75, "context": {"organism": "Arabidopsis thaliana", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "MOL1", "predicate": "acts in opposing manner to", "object": "CLE41", "type": "inhibits", "direction": "negative", "negated": false, "confidence": 0.9, "context": {"organism": "Arabidopsis thaliana", "cell_type": null, "experiment_type": null}}, {"subject": "MOL1", "predicate": "acts in opposing manner to", "object": "PXY", "type": "inhibits", "direction": "negative", "negated": false, "confidence": 0.9, "context": {"organism": "Arabidopsis thaliana", "cell_type": null, "experiment_type": null}}, {"subject": "MOL1", "predicate": "rescues", "object": "CLV1 deficiency", "type": "treats", "direction": "negative", "negated": false, "confidence": 0.9, "context": {"organism": "Arabidopsis thaliana", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "PXY", "predicate": "does not rescue", "object": "CLV1 deficiency", "type": "treats", "direction": "negative", "negated": true, "confidence": 0.75, "context": {"organism": "Arabidopsis thaliana", "cell_type": null, "experiment_type": null}}, {"subject": "MOL1", "predicate": "represses", "object": "ethylene signaling pathway", "type": "inhibits", "direction": "negative", "negated": false, "confidence": 0.75, "context": {"organism": "Arabidopsis thaliana", "cell_type": null, "experiment_type": null}}, {"subject": "MOL1", "predicate": "represses", "object": "jasmonic acid hormone signaling pathway", "type": "inhibits", "direction": "negative", "negated": false, "confidence": 0.75, "context": {"organism": "Arabidopsis thaliana", "cell_type": null, "experiment_type": null}}, {"subject": "ethylene", "predicate": "associated with", "object": "ethylene signaling pathway", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "jasmonic acid", "predicate": "associated with", "object": "jasmonic acid hormone signaling pathway", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "CLE41", "predicate": "part of", "object": "CLE41/PXY signaling module", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "PXY", "predicate": "part of", "object": "CLE41/PXY signaling module", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": null}}], "method": "ensemble"}}, {"pmid": "1848636", "text": "Debrisoquine phenotype and the pharmacokinetics and beta-2 receptor pharmacodynamics of metoprolol and its enantiomers. The metabolism of the cardioselective beta-blocker metoprolol is under genetic control of the debrisoquine/sparteine type. The two metabolic phenotypes, extensive (EM) and poor metabolizers (PM), show different stereoselective metabolism, resulting in apparently higher beta-1 adrenoceptor antagonistic potency of racemic metoprolol in EMs. We investigated if the latter also applies to the beta-2 adrenoceptor antagonism by metoprolol. The drug effect studied was the antagonism by metoprolol of terbutaline-induced hypokalemia. By using pharmacokinetic pharmacodynamic modeling the pharmacodynamics of racemic metoprolol and the active S-isomer, were quantitated in EMs and PMs in terms of IC50 values, representing metoprolol plasma concentrations resulting in half-maximum receptor occupancy. Six EMs received 0.5 mg of terbutaline s.c. on two different occasions: 1) 1 hr after administration of a placebo and 2) 1 hr after 150 mg of metoprolol p.o. Five PMs were studied according to the same protocol, except for a higher terbutaline dose (0.75 mg) on day 2. Blood samples for the analysis of plasma potassium, terbutaline, metoprolol (racemic, R- and S-isomer), and alpha-hydroxymetoprolol concentrations were taken at regular time intervals, during 8 hr after metoprolol. In PMs, metoprolol increased the terbutaline area under the plasma concentration vs. time curve (+67%). Higher metoprolol/alpha-hydroxymetoprolol ratios in PMs were predictive for higher R-/S-isomer ratios of unchanged drug. There was a difference in metoprolol potency with higher racemic metoprolol IC50 values in PMs (72 +/- 7 ng.ml-1) than EMs (42 +/- 8 ng.ml-1, P less than .001).(ABSTRACT TRUNCATED AT 250 WORDS)", "gold": {"entities": [{"text": "Debrisoquine", "type": "CHEMICAL", "start": 0, "end": 12, "identifier": "D003647"}, {"text": "beta-2 receptor", "type": "GENE", "start": 52, "end": 67, "identifier": "154"}, {"text": "metoprolol", "type": "CHEMICAL", "start": 88, "end": 98, "identifier": "D008790"}, {"text": "sparteine", "type": "CHEMICAL", "start": 227, "end": 236, "identifier": "D013034"}, {"text": "beta-1 adrenoceptor", "type": "GENE", "start": 390, "end": 409, "identifier": "153"}, {"text": "beta-2 adrenoceptor", "type": "GENE", "start": 511, "end": 530, "identifier": "154"}, {"text": "terbutaline", "type": "CHEMICAL", "start": 617, "end": 628, "identifier": "D013726"}, {"text": "hypokalemia", "type": "DISEASE", "start": 637, "end": 648, "identifier": "D007008"}, {"text": "potassium", "type": "CHEMICAL", "start": 1227, "end": 1236, "identifier": "D011188"}, {"text": "alpha-hydroxymetoprolol", "type": "CHEMICAL", "start": 1294, "end": 1317, "identifier": "C029504"}], "relationships": [{"subject": "beta-1 adrenoceptor", "object": "metoprolol", "type": "downregulates", "direction": "negative", "novel": "No"}, {"subject": "terbutaline", "object": "hypokalemia", "type": "upregulates", "direction": "positive", "novel": "No"}, {"subject": "metoprolol", "object": "sparteine", "type": "associated_with", "direction": "neutral", "novel": "No"}, {"subject": "metoprolol", "object": "debrisoquine", "type": "associated_with", "direction": "neutral", "novel": "No"}, {"subject": "metoprolol", "object": "terbutaline", "type": "upregulates", "direction": "positive", "novel": "Novel"}, {"subject": "metoprolol", "object": "hypokalemia", "type": "downregulates", "direction": "negative", "novel": "No"}, {"subject": "metoprolol", "object": "beta-2 adrenoceptor", "type": "downregulates", "direction": "negative", "novel": "Novel"}]}, "predicted": {"entities": [{"text": "metoprolol", "type": "CHEMICAL", "start": 97, "end": 107, "canonical_id": "chebi:6904", "canonical_name": "metoprolol", "confidence": 0.95}, {"text": "debrisoquine", "type": "CHEMICAL", "start": 0, "end": 12, "canonical_id": "mesh:D003647", "canonical_name": "Debrisoquin", "confidence": 0.95}, {"text": "sparteine", "type": "CHEMICAL", "start": 172, "end": 181, "canonical_id": "chebi:28827", "canonical_name": "sparteine", "confidence": 0.95}, {"text": "terbutaline", "type": "CHEMICAL", "start": 476, "end": 487, "canonical_id": "chebi:9449", "canonical_name": "terbutaline", "confidence": 0.95}, {"text": "potassium", "type": "CHEMICAL", "start": 1043, "end": 1052, "canonical_id": "mesh:D011188", "canonical_name": "Potassium", "confidence": 0.85}, {"text": "alpha-hydroxymetoprolol", "type": "CHEMICAL", "start": 1075, "end": 1097, "canonical_id": "chebi:165230", "canonical_name": "alpha-Hydroxymetoprolol", "confidence": 0.95}, {"text": "beta-2 receptor", "type": "GENE", "start": 27, "end": 42, "canonical_id": "gene:154", "canonical_name": "ADRB2", "confidence": 0.85}, {"text": "beta-1 adrenoceptor", "type": "GENE", "start": 222, "end": 241, "canonical_id": "gene:153", "canonical_name": "ADRB1", "confidence": 0.806}, {"text": "beta-2 adrenoceptor", "type": "GENE", "start": 317, "end": 336, "canonical_id": "gene:154", "canonical_name": "ADRB2", "confidence": 0.806}, {"text": "hypokalemia", "type": "DISEASE", "start": 488, "end": 499, "canonical_id": "doid:4500", "canonical_name": "hypokalemia", "confidence": 0.85}], "relationships": [{"subject": "metoprolol", "predicate": "associated_with", "object": "debrisoquine", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "metoprolol", "predicate": "associated_with", "object": "sparteine", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "metoprolol", "predicate": "inhibits", "object": "beta-1 adrenoceptor", "type": "inhibits", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "metoprolol", "predicate": "inhibits", "object": "beta-2 adrenoceptor", "type": "inhibits", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "metoprolol", "predicate": "downregulates", "object": "hypokalemia", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "terbutaline", "predicate": "causes", "object": "hypokalemia", "type": "upregulates", "direction": "positive", "negated": false, "confidence": 0.97, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}], "method": "ensemble"}}, {"pmid": "18439803", "text": "Acute effects of N-(2-propylpentanoyl)urea on hippocampal amino acid neurotransmitters in pilocarpine-induced seizure in rats. The present study aimed to investigate the anticonvulsant activity as well as the effects on the level of hippocampal amino acid neurotransmitters (glutamate, aspartate, glycine and GABA) of N-(2-propylpentanoyl)urea (VPU) in comparison to its parent compound, valproic acid (VPA). VPU was more potent than VPA, exhibiting the median effective dose (ED(50)) of 49 mg/kg in protecting rats against pilocarpine-induced seizure whereas the corresponding value for VPA was 322 mg/kg. In vivo microdialysis demonstrated that an intraperitoneal administration of pilocarpine induced a pronounced increment of hippocampal glutamate and aspartate whereas no significant change was observed on the level of glycine and GABA. Pretreatment with either VPU (50 and 100 mg/kg) or VPA (300 and 600 mg/kg) completely abolished pilocarpine-evoked increases in extracellular glutamate and aspartate. In addition, a statistically significant reduction was also observed on the level of GABA and glycine but less than a drastic reduction of glutamate and aspartate level. Based on the finding that VPU and VPA could protect the animals against pilocarpine-induced seizure it is suggested that the reduction of inhibitory amino acid neurotransmitters was comparatively minor and offset by a pronounced reduction of glutamate and aspartate. Therefore, like VPA, the finding that VPU could drastically reduce pilocarpine-induced increases in glutamate and aspartate should account, at least partly, for its anticonvulsant activity observed in pilocarpine-induced seizure in experimental animals. Some other mechanism than those being reported herein should be further investigated.", "gold": {"entities": [{"text": "N-(2-propylpentanoyl)urea", "type": "CHEMICAL", "start": 17, "end": 42, "identifier": "C108761"}, {"text": "pilocarpine", "type": "CHEMICAL", "start": 90, "end": 101, "identifier": "D010862"}, {"text": "seizure", "type": "DISEASE", "start": 110, "end": 117, "identifier": "D012640"}, {"text": "rats", "type": "ORGANISM", "start": 121, "end": 125, "identifier": "10116"}, {"text": "glutamate", "type": "CHEMICAL", "start": 275, "end": 284, "identifier": "D018698"}, {"text": "aspartate", "type": "CHEMICAL", "start": 286, "end": 295, "identifier": "D001224"}, {"text": "glycine", "type": "CHEMICAL", "start": 297, "end": 304, "identifier": "D005998"}, {"text": "GABA", "type": "CHEMICAL", "start": 309, "end": 313, "identifier": "D005680"}, {"text": "VPU", "type": "CHEMICAL", "start": 345, "end": 348, "identifier": "C108761"}, {"text": "valproic acid", "type": "CHEMICAL", "start": 388, "end": 401, "identifier": "D014635"}, {"text": "VPA", "type": "CHEMICAL", "start": 403, "end": 406, "identifier": "D014635"}], "relationships": [{"subject": "VPA", "object": "aspartate", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "VPA", "object": "glutamate", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "VPA", "object": "pilocarpine", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "VPU", "object": "GABA", "type": "associated_with", "direction": "neutral", "novel": "No"}, {"subject": "VPU", "object": "glycine", "type": "associated_with", "direction": "neutral", "novel": "No"}, {"subject": "VPU", "object": "aspartate", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "VPU", "object": "glutamate", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "VPU", "object": "VPA", "type": "associated_with", "direction": "neutral", "novel": "Novel"}, {"subject": "VPU", "object": "seizure", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "VPU", "object": "pilocarpine", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "seizure", "object": "VPA", "type": "downregulates", "direction": "negative", "novel": "Novel"}, {"subject": "pilocarpine", "object": "aspartate", "type": "upregulates", "direction": "positive", "novel": "Novel"}, {"subject": "pilocarpine", "object": "glutamate", "type": "upregulates", "direction": "positive", "novel": "Novel"}, {"subject": "pilocarpine", "object": "seizure", "type": "upregulates", "direction": "positive", "novel": "No"}]}, "predicted": {"entities": [{"text": "N-(2-propylpentanoyl)urea", "type": "CHEMICAL", "start": 10, "end": 34, "canonical_id": "mesh:D001806", "canonical_name": "Blood Urea Nitrogen", "confidence": 0.51}, {"text": "VPU", "type": "CHEMICAL", "start": 0, "end": 3, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "glutamate", "type": "CHEMICAL", "start": 0, "end": 9, "canonical_id": "mesh:D018698", "canonical_name": "Glutamic Acid", "confidence": 0.95}, {"text": "aspartate", "type": "CHEMICAL", "start": 0, "end": 9, "canonical_id": "chebi:132943", "canonical_name": "aspartate", "confidence": 0.95}, {"text": "glycine", "type": "CHEMICAL", "start": 0, "end": 7, "canonical_id": "chebi:15428", "canonical_name": "glycine", "confidence": 0.95}, {"text": "GABA", "type": "CHEMICAL", "start": 0, "end": 4, "canonical_id": "mesh:D005680", "canonical_name": "gamma-Aminobutyric Acid", "confidence": 0.95}, {"text": "valproic acid", "type": "CHEMICAL", "start": 0, "end": 13, "canonical_id": "chebi:39867", "canonical_name": "valproic acid", "confidence": 0.95}, {"text": "VPA", "type": "CHEMICAL", "start": 0, "end": 3, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "pilocarpine", "type": "CHEMICAL", "start": 0, "end": 11, "canonical_id": "chebi:39462", "canonical_name": "pilocarpine", "confidence": 0.95}, {"text": "seizure", "type": "DISEASE", "start": 0, "end": 7, "canonical_id": "mesh:D012640", "canonical_name": "Seizures", "confidence": 0.95}], "relationships": [{"subject": "N-(2-propylpentanoyl)urea", "predicate": "downregulates", "object": "seizure", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPU", "predicate": "downregulates", "object": "seizure", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPA", "predicate": "downregulates", "object": "seizure", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "valproic acid", "predicate": "downregulates", "object": "seizure", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.75, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "pilocarpine", "predicate": "causes", "object": "seizure", "type": "causes", "direction": "positive", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "pilocarpine", "predicate": "upregulates", "object": "glutamate", "type": "upregulates", "direction": "positive", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "pilocarpine", "predicate": "upregulates", "object": "aspartate", "type": "upregulates", "direction": "positive", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPU", "predicate": "downregulates", "object": "glutamate", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPU", "predicate": "downregulates", "object": "aspartate", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPA", "predicate": "downregulates", "object": "glutamate", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPA", "predicate": "downregulates", "object": "aspartate", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPU", "predicate": "downregulates", "object": "GABA", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.9, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPU", "predicate": "downregulates", "object": "glycine", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.9, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPA", "predicate": "downregulates", "object": "GABA", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.9, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "VPA", "predicate": "downregulates", "object": "glycine", "type": "downregulates", "direction": "negative", "negated": false, "confidence": 0.9, "context": {"organism": "rat", "cell_type": null, "experiment_type": "in_vivo"}}, {"subject": "N-(2-propylpentanoyl)urea", "predicate": "associated_with", "object": "VPU", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "VPU", "predicate": "associated_with", "object": "valproic acid", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": null}}], "method": "ensemble"}}, {"pmid": "18257781", "text": "Co-inheritance of a PKD1 mutation and homozygous PKD2 variant: a potential modifier in autosomal dominant polycystic kidney disease. BACKGROUND: Autosomal dominant polycystic kidney disease (ADPKD), which is caused by mutations in polycystins 1 (PC1) and 2 (PC2), is one of the most commonly inherited renal diseases, affecting ~1 : 1000 Caucasians. MATERIALS AND METHODS: We screened Greek ADPKD patients with the denaturing gradient gel electrophoresis (DGGE) assay and direct sequencing. RESULTS: We identified a patient homozygous for a nucleotide change c.1445T > G, resulting in a novel homozygous substitution of the non-polar hydrophobic phenylalanine to the polar hydrophilic cysteine in exon 6 at codon 482 (p.F482C) of the PKD2 gene and a de-novo PKD1 splice-site variant IVS21-2delAG. We did not find this PKD2 variant in a screen of 280 chromosomes of healthy subjects, supporting its pathogenicity. The proband's parents did not have the PKD1 mutation. Real-time PCR of the PKD2 transcript from a skin biopsy revealed 20-fold higher expression in the patient than in a healthy subject and was higher in the patient's peripheral blood mononuclear cells (PBMCs) than in those of her heterozygote daughter and a healthy subject. The greater gene expression was also supported by Western blotting. Inner medullar collecting duct (IMCD) cells transfected with the mutant PKD2 mouse gene presented a perinuclear and diffuse cytoplasmic localization compared with the wild type ER localization. Patch-clamping of PBMCs from the p.F482C homozygous and heterozygous subjects revealed lower polycystin-2 channel function than in controls. CONCLUSIONS: We report for the first time a patient with ADPKD who is heterozygous for a de novo PKD1 variant and homozygous for a novel PKD2 mutation.", "gold": {"entities": [{"text": "PKD1", "type": "GENE", "start": 20, "end": 24, "identifier": "5310"}, {"text": "PKD2", "type": "GENE", "start": 49, "end": 53, "identifier": "5311"}, {"text": "autosomal dominant polycystic kidney disease", "type": "DISEASE", "start": 87, "end": 131, "identifier": "D007690"}, {"text": "ADPKD", "type": "DISEASE", "start": 191, "end": 196, "identifier": "D007690"}, {"text": "polycystins 1", "type": "GENE", "start": 231, "end": 244, "identifier": "5310"}, {"text": "PC1", "type": "GENE", "start": 246, "end": 249, "identifier": "5310"}, {"text": "PC2", "type": "GENE", "start": 258, "end": 261, "identifier": "5311"}, {"text": "renal diseases", "type": "DISEASE", "start": 302, "end": 316, "identifier": "D007674"}, {"text": "patients", "type": "ORGANISM", "start": 397, "end": 405, "identifier": "9606"}, {"text": "patient", "type": "ORGANISM", "start": 516, "end": 523, "identifier": "9606"}, {"text": "c.1445T > G", "type": "VARIANT", "start": 559, "end": 570, "identifier": "rs75762896"}, {"text": "phenylalanine to the polar hydrophilic cysteine in exon 6 at codon 482", "type": "VARIANT", "start": 646, "end": 716, "identifier": "rs75762896"}, {"text": "p.F482C", "type": "VARIANT", "start": 718, "end": 725, "identifier": "rs75762896"}, {"text": "IVS21-2delAG", "type": "VARIANT", "start": 783, "end": 795, "identifier": "c|DEL|IVS21-2|AG"}, {"text": "mouse", "type": "ORGANISM", "start": 1385, "end": 1390, "identifier": "10090"}, {"text": "polycystin-2", "type": "GENE", "start": 1595, "end": 1607, "identifier": "5311"}], "relationships": [{"subject": "IVS21-2delAG", "object": "ADPKD", "type": "upregulates", "direction": "positive", "novel": "Novel"}, {"subject": "ADPKD", "object": "PKD2", "type": "associated_with", "direction": "neutral", "novel": "No"}, {"subject": "ADPKD", "object": "PKD1", "type": "associated_with", "direction": "neutral", "novel": "No"}, {"subject": "p.F482C", "object": "ADPKD", "type": "upregulates", "direction": "positive", "novel": "Novel"}]}, "predicted": {"entities": [{"text": "PKD1", "type": "GENE", "start": 18, "end": 22, "canonical_id": "gene:5310", "canonical_name": "PKD1", "confidence": 0.95}, {"text": "PKD2", "type": "GENE", "start": 46, "end": 50, "canonical_id": "gene:5311", "canonical_name": "PKD2", "confidence": 0.95}, {"text": "autosomal dominant polycystic kidney disease", "type": "DISEASE", "start": 101, "end": 145, "canonical_id": "doid:898", "canonical_name": "autosomal dominant polycystic kidney disease", "confidence": 0.95}, {"text": "ADPKD", "type": "DISEASE", "start": 147, "end": 152, "canonical_id": "doid:898", "canonical_name": "autosomal dominant polycystic kidney disease", "confidence": 0.95}, {"text": "polycystins 1", "type": "GENE", "start": 175, "end": 188, "canonical_id": "mesh:D050396", "canonical_name": "TRPP Cation Channels", "confidence": 0.896}, {"text": "PC1", "type": "GENE", "start": 190, "end": 193, "canonical_id": "gene:3868", "canonical_name": "KRT16", "confidence": 0.95}, {"text": "polycystins 2", "type": "GENE", "start": 199, "end": 202, "canonical_id": "mesh:D050396", "canonical_name": "TRPP Cation Channels", "confidence": 0.896}, {"text": "PC2", "type": "GENE", "start": 203, "end": 206, "canonical_id": "gene:3854", "canonical_name": "KRT6B", "confidence": 0.95}, {"text": "renal diseases", "type": "DISEASE", "start": 236, "end": 250, "canonical_id": "mesh:D052177", "canonical_name": "Kidney Diseases, Cystic", "confidence": 0.817}, {"text": "c.1445T > G", "type": "VARIANT", "start": 371, "end": 382, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "p.F482C", "type": "VARIANT", "start": 487, "end": 494, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "IVS21-2delAG", "type": "VARIANT", "start": 551, "end": 563, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "polycystin-2", "type": "GENE", "start": 1063, "end": 1075, "canonical_id": "mesh:D050396", "canonical_name": "TRPP Cation Channels", "confidence": 0.95}, {"text": "peripheral blood mononuclear cells", "type": "CELL_TYPE", "start": 762, "end": 796, "canonical_id": "mesh:D007963", "canonical_name": "Leukocytes, Mononuclear", "confidence": 0.95}, {"text": "PBMCs", "type": "CELL_TYPE", "start": 798, "end": 803, "canonical_id": "cvcl:CVCL_WR41", "canonical_name": "PBMC iPSC #1", "confidence": 0.567}, {"text": "Inner medullar collecting duct", "type": "CELL_TYPE", "start": 888, "end": 918, "canonical_id": null, "canonical_name": null, "confidence": 0.95}, {"text": "IMCD", "type": "CELL_TYPE", "start": 920, "end": 924, "canonical_id": "cvcl:CVCL_0429", "canonical_name": "mIMCD-3", "confidence": 0.85}], "relationships": [{"subject": "PKD1", "predicate": "associated_with", "object": "autosomal dominant polycystic kidney disease", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "PKD2", "predicate": "associated_with", "object": "autosomal dominant polycystic kidney disease", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.9, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "PC1", "predicate": "associated_with", "object": "autosomal dominant polycystic kidney disease", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.97, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "PC2", "predicate": "associated_with", "object": "autosomal dominant polycystic kidney disease", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.97, "context": {"organism": null, "cell_type": null, "experiment_type": null}}, {"subject": "p.F482C", "predicate": "associated_with", "object": "autosomal dominant polycystic kidney disease", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "IVS21-2delAG", "predicate": "associated_with", "object": "autosomal dominant polycystic kidney disease", "type": "associated_with", "direction": "neutral", "negated": false, "confidence": 0.75, "context": {"organism": null, "cell_type": null, "experiment_type": "clinical"}}, {"subject": "p.F482C", "predicate": "inhibits", "object": "polycystins 1", "type": "inhibits", "direction": "negative", "negated": false, "confidence": 0.97, "context": {"organism": null, "cell_type": "PBMCs", "experiment_type": "in_vitro"}}], "method": "ensemble"}}];
+let currentIndex = 0;
+let activeTypeFilters = new Set();
+let selectedEntity = null;   // currently clicked entity text (lowercase)
+let currentRels = [];        // predicted relationships for current abstract
+let currentGoldRels = [];    // gold relationships for current abstract
+
+// --- Data loading ---
+function loadFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try { DATA = JSON.parse(e.target.result); currentIndex = 0; render(); }
+    catch (err) { alert('Invalid JSON file: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+fetch('viewer_data.json')
+  .then(r => { if (r.ok) return r.json(); throw new Error('not found'); })
+  .then(data => { DATA = data; render(); })
+  .catch(() => {});
+
+// --- Navigation ---
+function navigate(delta) {
+  currentIndex = Math.max(0, Math.min(DATA.length - 1, currentIndex + delta));
+  selectedEntity = null;
+  render();
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft') navigate(-1);
+  if (e.key === 'ArrowRight') navigate(1);
+  if (e.key === 'Escape') { selectedEntity = null; updateSelection(); }
+});
+
+// --- Matching logic ---
+function normalizeText(t) { return (t || '').toLowerCase().trim(); }
+
+// Build a canonical mapping: text -> canonical key
+// Bridges synonyms like "ADPKD" <-> "autosomal dominant polycystic kidney disease"
+// when they share a canonical_id (pred) or identifier (gold)
+function buildCanonicalMap(predEnts, goldEnts) {
+  const textToCanon = new Map(); // text_lower -> canonical key
+
+  // Group predicted entities by canonical_id
+  const canonGroups = new Map(); // canonical_id -> [text_lower, ...]
+  if (predEnts) {
+    predEnts.forEach(e => {
+      const t = normalizeText(e.text);
+      const cid = e.canonical_id;
+      if (cid) {
+        if (!canonGroups.has(cid)) canonGroups.set(cid, []);
+        canonGroups.get(cid).push(t);
+        textToCanon.set(t, cid);
+      }
+    });
+  }
+
+  // Map gold entities: if a gold entity text matches a pred canonical_id group,
+  // bridge them. Also map gold identifier -> pred canonical_id for cross-ontology.
+  const predIdToGoldId = new Map();
+  if (goldEnts && predEnts) {
+    // Find matched entities (same text) and build cross-ontology bridge
+    goldEnts.forEach(ge => {
+      const gt = normalizeText(ge.text);
+      const gid = ge.identifier;
+      // If this gold text matches a pred entity, bridge their IDs
+      predEnts.forEach(pe => {
+        const pt = normalizeText(pe.text);
+        if (pt === gt && pe.canonical_id && gid && !gid.startsWith('-')) {
+          predIdToGoldId.set(pe.canonical_id, gid);
+        }
+      });
+    });
+  }
+
+  if (goldEnts) {
+    goldEnts.forEach(e => {
+      const t = normalizeText(e.text);
+      const gid = e.identifier;
+      if (gid && !gid.startsWith('-')) {
+        // Check if any pred canonical_id bridges to this gold id
+        for (const [pcid, bridgedGid] of predIdToGoldId) {
+          if (bridgedGid === gid) { textToCanon.set(t, pcid); return; }
+        }
+        // Check if this text already has a pred canonical_id
+        if (textToCanon.has(t)) return;
+        // Use gold identifier as canonical key
+        textToCanon.set(t, 'gold:' + gid);
+      }
+    });
+  }
+
+  // For pred entities sharing a canonical_id, pick one canonical text
+  // so all synonyms resolve to the same key
+  return textToCanon;
+}
+
+function canonicalKey(text, canonMap) {
+  const t = normalizeText(text);
+  return canonMap.has(t) ? canonMap.get(t) : t;
+}
+
+function matchEntities(pred, gold) {
+  if (!gold) return { predStatus: new Map(), goldStatus: new Map() };
+  const predStatus = new Map(), goldStatus = new Map();
+  const goldMap = new Map();
+  gold.forEach((e, i) => goldMap.set(normalizeText(e.text), i));
+  const matched = new Set();
+  pred.forEach((e, i) => {
+    const key = normalizeText(e.text);
+    if (goldMap.has(key)) { predStatus.set(i, 'tp'); goldStatus.set(goldMap.get(key), 'tp'); matched.add(key); }
+  });
+  pred.forEach((e, i) => { if (!predStatus.has(i)) predStatus.set(i, 'fp'); });
+  gold.forEach((e, i) => { if (!goldStatus.has(i)) goldStatus.set(i, 'fn'); });
+  return { predStatus, goldStatus };
+}
+
+function matchRelationships(pred, gold, canonMap) {
+  if (!gold) return { predStatus: new Map(), goldStatus: new Map() };
+  const predStatus = new Map(), goldStatus = new Map();
+
+  function pairKey(s, o) {
+    const a = canonicalKey(s, canonMap), b = canonicalKey(o, canonMap);
+    return a < b ? a + '||' + b : b + '||' + a;
+  }
+
+  const goldPairs = new Map();
+  gold.forEach((r, i) => {
+    const k = pairKey(r.subject, r.object);
+    if (!goldPairs.has(k)) goldPairs.set(k, []);
+    goldPairs.get(k).push(i);
+  });
+  pred.forEach((r, i) => {
+    const k = pairKey(r.subject, r.object);
+    if (goldPairs.has(k)) { predStatus.set(i, 'tp'); goldPairs.get(k).forEach(gi => goldStatus.set(gi, 'tp')); }
+    else predStatus.set(i, 'fp');
+  });
+  gold.forEach((r, i) => { if (!goldStatus.has(i)) goldStatus.set(i, 'fn'); });
+  return { predStatus, goldStatus };
+}
+
+// --- Rendering ---
+function render() {
+  if (DATA.length === 0) {
+    document.getElementById('empty-state').style.display = 'block';
+    document.getElementById('main-content').style.display = 'none';
+    return;
+  }
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+
+  const d = DATA[currentIndex];
+  const pred = d.predicted, gold = d.gold;
+  const hasGold = gold && gold.entities && gold.entities.length > 0;
+
+  currentRels = pred.relationships || [];
+  currentGoldRels = (gold && gold.relationships) || [];
+
+  // Nav
+  document.getElementById('nav-label').textContent = `${currentIndex + 1} / ${DATA.length}`;
+  document.getElementById('prev-btn').disabled = currentIndex === 0;
+  document.getElementById('next-btn').disabled = currentIndex === DATA.length - 1;
+  const pmid = d.pmid, pmidEl = document.getElementById('pmid-label');
+  if (pmid && pmid !== 'custom') pmidEl.innerHTML = `PMID <a href="https://pubmed.ncbi.nlm.nih.gov/${pmid}/" target="_blank">${pmid}</a>`;
+  else pmidEl.textContent = '';
+
+  document.getElementById('legend').style.display = hasGold ? 'flex' : 'none';
+  document.getElementById('gold-entities-panel').style.display = hasGold ? '' : 'none';
+  document.getElementById('gold-rels-panel').style.display = hasGold ? '' : 'none';
+  document.getElementById('entity-panels').style.gridTemplateColumns = hasGold ? '1fr 1fr' : '1fr';
+  document.getElementById('rel-panels').style.gridTemplateColumns = hasGold ? '1fr 1fr' : '1fr';
+
+  const entMatch = matchEntities(pred.entities, gold ? gold.entities : null);
+  const canonMap = buildCanonicalMap(pred.entities, gold ? gold.entities : null);
+  const relMatch = matchRelationships(pred.relationships, gold ? gold.relationships : null, canonMap);
+
+  renderStats(pred, gold, entMatch, relMatch, hasGold);
+  renderTypeFilter(pred.entities, gold ? gold.entities : []);
+  renderAbstract(d.text, pred.entities, gold ? gold.entities : [], entMatch);
+  renderEntityTable('pred-entities-table', pred.entities, entMatch.predStatus, true);
+  document.getElementById('pred-ent-count').textContent = pred.entities.length;
+  if (hasGold) {
+    renderEntityTable('gold-entities-table', gold.entities, entMatch.goldStatus, false);
+    document.getElementById('gold-ent-count').textContent = gold.entities.length;
+  }
+  renderRelationships('pred-rels', pred.relationships, relMatch.predStatus, true);
+  document.getElementById('pred-rel-count').textContent = pred.relationships.length;
+  if (hasGold) {
+    renderRelationships('gold-rels', gold.relationships, relMatch.goldStatus, false);
+    document.getElementById('gold-rel-count').textContent = gold.relationships.length;
+  }
+
+  // Draw arcs if an entity is selected
+  updateSelection();
+}
+
+function renderStats(pred, gold, entMatch, relMatch, hasGold) {
+  const bar = document.getElementById('stats-bar');
+  if (!hasGold) {
+    bar.innerHTML = `
+      <div class="stat"><div class="stat-label">Entities</div><div class="stat-value">${pred.entities.length}</div></div>
+      <div class="stat"><div class="stat-label">Relationships</div><div class="stat-value">${pred.relationships.length}</div></div>
+      <div class="stat"><div class="stat-label">Method</div><div class="stat-value" style="font-size:14px">${pred.method}</div></div>`;
+    return;
+  }
+  const entTP = [...entMatch.predStatus.values()].filter(v => v === 'tp').length;
+  const entFP = [...entMatch.predStatus.values()].filter(v => v === 'fp').length;
+  const entFN = [...entMatch.goldStatus.values()].filter(v => v === 'fn').length;
+  const relTP = [...relMatch.predStatus.values()].filter(v => v === 'tp').length;
+  const relFP = [...relMatch.predStatus.values()].filter(v => v === 'fp').length;
+  const relFN = [...relMatch.goldStatus.values()].filter(v => v === 'fn').length;
+  function f1(tp, fp, fn) {
+    const p = tp+fp>0 ? tp/(tp+fp) : 0, r = tp+fn>0 ? tp/(tp+fn) : 0;
+    return p+r>0 ? (2*p*r/(p+r)*100).toFixed(1) : '0.0';
+  }
+  function cc(val) { const v=parseFloat(val); return v>=80?'good':v>=60?'warn':'bad'; }
+  const ef=f1(entTP,entFP,entFN), rf=f1(relTP,relFP,relFN);
+  bar.innerHTML = `
+    <div class="stat"><div class="stat-label">Entity F1</div><div class="stat-value ${cc(ef)}">${ef}%</div></div>
+    <div class="stat"><div class="stat-label">Ent TP/FP/FN</div><div class="stat-value" style="font-size:14px"><span style="color:var(--tp)">${entTP}</span> / <span style="color:var(--fp)">${entFP}</span> / <span style="color:var(--fn)">${entFN}</span></div></div>
+    <div class="stat"><div class="stat-label">Rel F1</div><div class="stat-value ${cc(rf)}">${rf}%</div></div>
+    <div class="stat"><div class="stat-label">Rel TP/FP/FN</div><div class="stat-value" style="font-size:14px"><span style="color:var(--tp)">${relTP}</span> / <span style="color:var(--fp)">${relFP}</span> / <span style="color:var(--fn)">${relFN}</span></div></div>
+    <div class="stat"><div class="stat-label">Method</div><div class="stat-value" style="font-size:14px">${pred.method}</div></div>`;
+}
+
+function renderTypeFilter(predEnts, goldEnts) {
+  const types = new Set();
+  predEnts.forEach(e => types.add(e.type.toUpperCase()));
+  goldEnts.forEach(e => types.add(e.type.toUpperCase()));
+  const bar = document.getElementById('entity-filter');
+  bar.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.className = 'filter-btn' + (activeTypeFilters.size === 0 ? ' active' : '');
+  allBtn.textContent = 'All';
+  allBtn.onclick = () => { activeTypeFilters.clear(); render(); };
+  bar.appendChild(allBtn);
+  [...types].sort().forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (activeTypeFilters.has(t) ? ' active' : '');
+    btn.textContent = t;
+    btn.onclick = () => { if (activeTypeFilters.has(t)) activeTypeFilters.delete(t); else activeTypeFilters.add(t); render(); };
+    bar.appendChild(btn);
+  });
+}
+
+function shouldShowType(type) {
+  return activeTypeFilters.size === 0 || activeTypeFilters.has(type.toUpperCase());
+}
+
+function renderAbstract(text, predEnts, goldEnts, entMatch) {
+  const el = document.getElementById('abstract-text');
+  const spans = [];
+
+  predEnts.forEach((e, i) => {
+    if (!shouldShowType(e.type)) return;
+    const status = entMatch.predStatus.get(i) || 'fp';
+    let idx = text.toLowerCase().indexOf(e.text.toLowerCase());
+    if (idx >= 0) spans.push({ start: idx, end: idx + e.text.length, type: e.type, text: e.text, source: 'pred', status });
+  });
+  if (goldEnts) {
+    goldEnts.forEach((e, i) => {
+      if (!shouldShowType(e.type)) return;
+      if ((entMatch.goldStatus.get(i) || 'fn') === 'fn') {
+        let idx = text.toLowerCase().indexOf(e.text.toLowerCase());
+        if (idx >= 0) spans.push({ start: idx, end: idx + e.text.length, type: e.type, text: e.text, source: 'gold', status: 'fn' });
+      }
+    });
+  }
+
+  spans.sort((a, b) => a.start - b.start || b.end - a.end);
+  const filtered = [];
+  let lastEnd = -1;
+  for (const s of spans) { if (s.start >= lastEnd) { filtered.push(s); lastEnd = s.end; } }
+
+  let html = '', pos = 0;
+  for (const s of filtered) {
+    if (s.start > pos) html += escapeHtml(text.slice(pos, s.start));
+    const goldClass = s.source === 'gold' ? ' gold-only' : '';
+    const entKey = s.text.toLowerCase().trim();
+    html += `<span class="entity-highlight${goldClass}" data-type="${s.type}" data-entity="${escapeAttr(entKey)}" onclick="toggleEntity('${escapeAttr(entKey)}', event)">`;
+    html += escapeHtml(text.slice(s.start, s.end));
+    html += `<span class="entity-tooltip">${s.type} ${s.status === 'tp' ? '(matched)' : s.status === 'fp' ? '(predicted only)' : '(gold only)'}</span>`;
+    html += '</span>';
+    pos = s.end;
+  }
+  if (pos < text.length) html += escapeHtml(text.slice(pos));
+  el.innerHTML = html;
+}
+
+// --- Entity click → show arcs ---
+
+function toggleEntity(entKey, evt) {
+  if (evt) evt.stopPropagation();
+  if (selectedEntity === entKey) selectedEntity = null;
+  else selectedEntity = entKey;
+  updateSelection();
+}
+
+document.addEventListener('click', (e) => {
+  if (!selectedEntity) return;
+  if (e.target.closest('.entity-highlight') || e.target.closest('.rel-card')) return;
+  selectedEntity = null;
+  updateSelection();
+});
+
+function updateSelection() {
+  const svg = document.getElementById('arc-svg');
+  svg.innerHTML = '';
+
+  const allHighlights = document.querySelectorAll('.entity-highlight');
+  const hint = document.getElementById('hint-text');
+
+  if (!selectedEntity) {
+    // Clear all selection styling
+    allHighlights.forEach(el => { el.classList.remove('selected', 'related', 'dimmed'); });
+    hint.textContent = 'Click an entity to see its relationships. Click again to deselect.';
+    // Clear active state on rel cards
+    document.querySelectorAll('.rel-card').forEach(c => c.classList.remove('active'));
+    return;
+  }
+
+  // Find all relationships involving selected entity (from both pred and gold)
+  const relatedEntities = new Set();
+  const activeRels = [];
+
+  currentRels.forEach(r => {
+    const s = normalizeText(r.subject), o = normalizeText(r.object);
+    if (s === selectedEntity || o === selectedEntity) {
+      relatedEntities.add(s); relatedEntities.add(o);
+      activeRels.push({ ...r, source: 'pred' });
+    }
+  });
+  currentGoldRels.forEach(r => {
+    const s = normalizeText(r.subject), o = normalizeText(r.object);
+    if (s === selectedEntity || o === selectedEntity) {
+      relatedEntities.add(s); relatedEntities.add(o);
+      activeRels.push({ ...r, source: 'gold' });
+    }
+  });
+
+  // Style entity highlights
+  allHighlights.forEach(el => {
+    const ek = el.getAttribute('data-entity');
+    if (ek === selectedEntity) { el.classList.add('selected'); el.classList.remove('related', 'dimmed'); }
+    else if (relatedEntities.has(ek)) { el.classList.add('related'); el.classList.remove('selected', 'dimmed'); }
+    else { el.classList.add('dimmed'); el.classList.remove('selected', 'related'); }
+  });
+
+  // Highlight matching rel-cards
+  document.querySelectorAll('.rel-card').forEach(card => {
+    const s = card.getAttribute('data-subj'), o = card.getAttribute('data-obj');
+    if (s === selectedEntity || o === selectedEntity) card.classList.add('active');
+    else card.classList.remove('active');
+  });
+
+  hint.textContent = `${activeRels.length} relationship(s) for selected entity. Press Escape to clear.`;
+
+  // Draw arcs between entity spans in the text
+  drawArcs(activeRels);
+}
+
+function drawArcs(rels) {
+  const svg = document.getElementById('arc-svg');
+  const wrapper = document.querySelector('.abstract-text-wrapper');
+  const wrapperRect = wrapper.getBoundingClientRect();
+
+  // Set SVG size
+  svg.setAttribute('width', wrapperRect.width);
+  svg.setAttribute('height', wrapperRect.height);
+
+  // Build map: entity key → DOM element center position
+  const entityPositions = new Map();
+  document.querySelectorAll('.entity-highlight').forEach(el => {
+    const ek = el.getAttribute('data-entity');
+    if (!entityPositions.has(ek)) {
+      const rect = el.getBoundingClientRect();
+      entityPositions.set(ek, {
+        x: rect.left + rect.width / 2 - wrapperRect.left,
+        y: rect.top - wrapperRect.top,
+        w: rect.width,
+        h: rect.height,
+      });
+    }
+  });
+
+  // Deduplicate arcs by entity pair
+  const drawnPairs = new Set();
+
+  rels.forEach((r, i) => {
+    const sKey = normalizeText(r.subject), oKey = normalizeText(r.object);
+    const pairId = sKey < oKey ? sKey + '||' + oKey : oKey + '||' + sKey;
+    if (drawnPairs.has(pairId)) return;
+    drawnPairs.add(pairId);
+
+    const sPos = entityPositions.get(sKey), oPos = entityPositions.get(oKey);
+    if (!sPos || !oPos) return;
+
+    // Determine arc color
+    const isPred = r.source === 'pred';
+    let color = '#999';
+    if (r.direction === 'positive') color = '#27ae60';
+    else if (r.direction === 'negative') color = '#e74c3c';
+    else color = '#4a6fa5';
+
+    // If gold-only, use dashed orange
+    const isGoldOnly = r.source === 'gold';
+
+    // Arc from top-center of subject to top-center of object
+    const x1 = sPos.x, y1 = sPos.y;
+    const x2 = oPos.x, y2 = oPos.y;
+    const midX = (x1 + x2) / 2;
+
+    // Arc height scales with horizontal distance
+    const dx = Math.abs(x2 - x1);
+    const dy = Math.abs(y2 - y1);
+    // If entities are on the same line (similar y), draw arc above
+    // If on different lines, draw a straight-ish curve
+    const sameLine = dy < 30;
+    const arcHeight = sameLine ? Math.max(25, dx * 0.25) : Math.max(20, dy * 0.3 + dx * 0.1);
+
+    const cpY = Math.min(y1, y2) - arcHeight;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${x1} ${y1} Q ${midX} ${cpY} ${x2} ${y2}`);
+    path.setAttribute('stroke', isGoldOnly ? '#e67e22' : color);
+    path.setAttribute('stroke-dasharray', isGoldOnly ? '4 3' : 'none');
+    path.setAttribute('stroke-width', isGoldOnly ? '1.2' : '1.8');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('opacity', '0.7');
+    svg.appendChild(path);
+
+    // Label at the midpoint of the arc
+    const labelX = midX;
+    const labelY = cpY + 4;
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', labelX);
+    label.setAttribute('y', labelY);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('fill', isGoldOnly ? '#c87820' : color);
+    label.setAttribute('font-size', '10');
+    label.setAttribute('font-weight', '600');
+    label.textContent = r.type || '';
+    svg.appendChild(label);
+
+    // Small background rect behind label for readability
+    const bbox = label.getBBox();
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('x', bbox.x - 3);
+    bg.setAttribute('y', bbox.y - 1);
+    bg.setAttribute('width', bbox.width + 6);
+    bg.setAttribute('height', bbox.height + 2);
+    bg.setAttribute('fill', 'white');
+    bg.setAttribute('opacity', '0.85');
+    bg.setAttribute('rx', '3');
+    svg.insertBefore(bg, label);
+  });
+}
+
+function renderEntityTable(tableId, entities, statusMap, isPred) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  tbody.innerHTML = '';
+  entities.forEach((e, i) => {
+    if (!shouldShowType(e.type)) return;
+    const status = statusMap ? (statusMap.get(i) || '') : '';
+    const tr = document.createElement('tr');
+    const statusHtml = status ? `<span class="match-dot ${status}"></span>` : '';
+    let idHtml = '';
+    if (isPred) {
+      if (e.canonical_id) {
+        idHtml = `<span class="canonical-id">${escapeHtml(e.canonical_id)}</span>`;
+        if (e.canonical_name && e.canonical_name !== e.text) idHtml += `<br><span class="canonical-id">${escapeHtml(e.canonical_name)}</span>`;
+      }
+    } else {
+      if (e.identifier) idHtml = `<span class="canonical-id">${escapeHtml(e.identifier)}</span>`;
+    }
+    const confHtml = isPred && e.confidence !== undefined
+      ? `<span class="confidence-bar" style="width:${e.confidence * 40}px"></span> ${(e.confidence * 100).toFixed(0)}%` : '';
+    tr.innerHTML = `<td>${statusHtml}</td><td>${escapeHtml(e.text)}</td><td><span class="type-badge ${e.type.toUpperCase()}">${e.type}</span></td><td>${idHtml}</td>${isPred ? `<td>${confHtml}</td>` : ''}`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderRelationships(containerId, rels, statusMap, isPred) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  rels.forEach((r, i) => {
+    const status = statusMap ? (statusMap.get(i) || '') : '';
+    const diffClass = status ? ` diff-${status}` : '';
+    const dirClass = r.direction === 'positive' ? 'dir-positive' : r.direction === 'negative' ? 'dir-negative' : 'dir-neutral';
+    const negClass = r.negated ? ' negated' : '';
+    let contextHtml = '';
+    if (isPred && r.context) {
+      const parts = [];
+      if (r.context.organism) parts.push(r.context.organism);
+      if (r.context.cell_type) parts.push(r.context.cell_type);
+      if (r.context.experiment_type) parts.push(r.context.experiment_type);
+      if (parts.length) contextHtml = `<span class="rel-context">[${parts.join(', ')}]</span>`;
+    }
+    const confHtml = isPred && r.confidence !== undefined ? `<span class="rel-confidence">${(r.confidence * 100).toFixed(0)}%</span>` : '';
+    const novelHtml = !isPred && r.novel ? `<span class="rel-context">[${r.novel}]</span>` : '';
+    const card = document.createElement('div');
+    const sKey = normalizeText(r.subject), oKey = normalizeText(r.object);
+    card.className = `rel-card${diffClass}${negClass}`;
+    card.setAttribute('data-subj', sKey);
+    card.setAttribute('data-obj', oKey);
+    card.onclick = (e) => { e.stopPropagation(); selectedEntity = sKey; updateSelection(); };
+    card.innerHTML = `
+      <span class="match-dot ${status}"></span>
+      <span class="rel-subject">${escapeHtml(r.subject)}</span>
+      <span class="rel-arrow">&rarr;</span>
+      <span class="rel-type ${dirClass}">${escapeHtml(r.type)}${r.negated ? ' (NEG)' : ''}</span>
+      <span class="rel-arrow">&rarr;</span>
+      <span class="rel-object">${escapeHtml(r.object)}</span>
+      ${contextHtml}${novelHtml}${confHtml}`;
+    container.appendChild(card);
+  });
+  if (rels.length === 0) container.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:12px;">No relationships</div>';
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function escapeAttr(text) {
+  return (text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// Redraw arcs on resize
+window.addEventListener('resize', () => { if (selectedEntity) { clearTimeout(window._resizeTimer); window._resizeTimer = setTimeout(() => updateSelection(), 100); } });
+
+render();
+</script>
+</body>
+</html>

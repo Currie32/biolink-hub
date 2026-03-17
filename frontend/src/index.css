@@ -1,0 +1,25 @@
+:root {
+  --bg: #faf8f5;
+  --surface: #ffffff;
+  --border: #e0dad2;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --text: #1a1a1a;
+  --text-muted: #6b7280;
+  --radius: 10px;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
