@@ -150,12 +150,26 @@ def train_approach_a(subset: list[dict], output_dir: str, epochs: int):
         targets = tokenizer(
             batch["output"], max_length=1024, truncation=True,
         )
-        inputs["labels"] = targets["input_ids"]
+        # Replace pad_token_id with -100 so they're ignored in loss
+        labels = []
+        for label_ids in targets["input_ids"]:
+            labels.append([
+                -100 if tok == tokenizer.pad_token_id else tok
+                for tok in label_ids
+            ])
+        inputs["labels"] = labels
         return inputs
 
     train_ds = Dataset.from_list(train_data).map(
         tokenize, batched=True, remove_columns=["input", "output"]
     )
+
+    # Debug: inspect labels
+    sample_labels = train_ds[0]["labels"]
+    non_ignored = [l for l in sample_labels if l != -100]
+    _log(f"  [DEBUG] Label length: {len(sample_labels)}, non-ignored tokens: {len(non_ignored)}")
+    _log(f"  [DEBUG] First 20 label tokens: {sample_labels[:20]}")
+    _log(f"  [DEBUG] Decoded output preview: {tokenizer.decode(non_ignored)[:200]}")
     eval_ds = None
     if eval_data:
         eval_ds = Dataset.from_list(eval_data).map(
