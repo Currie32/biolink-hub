@@ -181,30 +181,38 @@ def train_re(
     logger.info("RE model saved to %s", output_dir)
 
 
-def predict_relationships(
-    text: str,
-    entities: list[dict],
-    model_dir: str,
-    max_input_length: int = 512,
-    max_output_length: int = 512,
-) -> list[dict]:
-    """Run RE inference with entity-conditioned input.
-
-    Returns list of {"subject": str, "object": str, "type": str, "direction": str}.
-    """
+def load_re_model(model_dir: str):
+    """Load a trained RE model and tokenizer. Returns (model, tokenizer)."""
     from transformers import AutoTokenizer
     from peft import AutoPeftModelForSeq2SeqLM
 
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
-
-    # Try loading as PEFT model first, fall back to standard
     try:
         model = AutoPeftModelForSeq2SeqLM.from_pretrained(model_dir)
     except Exception:
         from transformers import AutoModelForSeq2SeqLM
         model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
-
     model.eval()
+    return model, tokenizer
+
+
+def predict_relationships(
+    text: str,
+    entities: list[dict],
+    model_dir: str = None,
+    max_input_length: int = 512,
+    max_output_length: int = 512,
+    model=None,
+    tokenizer=None,
+) -> list[dict]:
+    """Run RE inference with entity-conditioned input.
+
+    Returns list of {"subject": str, "object": str, "type": str, "direction": str}.
+
+    Pass model and tokenizer to avoid reloading on every call.
+    """
+    if model is None or tokenizer is None:
+        model, tokenizer = load_re_model(model_dir)
 
     input_text = format_re_input(text, entities)
     inputs = tokenizer(

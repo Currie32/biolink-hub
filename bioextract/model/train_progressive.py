@@ -238,8 +238,8 @@ def train_and_evaluate_approach_b(
 
     Returns dict with end_to_end metrics, ner_only metrics, and re_with_gold metrics.
     """
-    from .train_ner import train_ner, predict_entities
-    from .train_re import train_re, predict_relationships
+    from .train_ner import train_ner, predict_entities, load_ner_model
+    from .train_re import train_re, predict_relationships, load_re_model
 
     # Stage 1: Train NER
     logger.info("Approach B — Stage 1: Training NER")
@@ -249,13 +249,18 @@ def train_and_evaluate_approach_b(
     logger.info("Approach B — Stage 2: Training RE")
     train_re(subset, re_dir, epochs=epochs)
 
-    # --- Evaluation ---
+    # --- Evaluation (load models once) ---
+
+    logger.info("Loading NER model for evaluation")
+    ner_model, ner_tokenizer = load_ner_model(ner_dir)
+    logger.info("Loading RE model for evaluation")
+    re_model, re_tokenizer = load_re_model(re_dir)
 
     # NER-only evaluation
     logger.info("Evaluating NER standalone")
     ner_predictions = []
     for ex in test_data:
-        pred_entities = predict_entities(ex["text"], ner_dir)
+        pred_entities = predict_entities(ex["text"], model=ner_model, tokenizer=ner_tokenizer)
         ner_predictions.append(pred_entities)
 
     gold_entity_lists = [ex.get("entities", []) for ex in test_data]
@@ -265,7 +270,8 @@ def train_and_evaluate_approach_b(
     logger.info("Evaluating RE with gold entities")
     re_gold_predictions = []
     for ex in test_data:
-        pred_rels = predict_relationships(ex["text"], ex.get("entities", []), re_dir)
+        pred_rels = predict_relationships(ex["text"], ex.get("entities", []),
+                                          model=re_model, tokenizer=re_tokenizer)
         re_gold_predictions.append({"entities": ex.get("entities", []), "relationships": pred_rels})
 
     re_gold_metrics = compute_metrics(re_gold_predictions, test_data)
@@ -274,7 +280,8 @@ def train_and_evaluate_approach_b(
     logger.info("Evaluating end-to-end pipeline")
     e2e_predictions = []
     for ex, pred_entities in zip(test_data, ner_predictions):
-        pred_rels = predict_relationships(ex["text"], pred_entities, re_dir)
+        pred_rels = predict_relationships(ex["text"], pred_entities,
+                                          model=re_model, tokenizer=re_tokenizer)
         e2e_predictions.append({"entities": pred_entities, "relationships": pred_rels})
 
     e2e_metrics = compute_metrics(e2e_predictions, test_data)

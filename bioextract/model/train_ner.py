@@ -178,17 +178,27 @@ def train_ner(
     logger.info("NER model saved to %s", output_dir)
 
 
-def predict_entities(text: str, model_dir: str, max_length: int = 512) -> list[dict]:
-    """Run NER inference: tokenize → predict BIO tags → merge spans → return entity dicts.
-
-    Returns list of {"text": str, "type": str, "start": int, "end": int}.
-    Entity text is extracted from the original text using character offsets (not tokenized text).
-    """
+def load_ner_model(model_dir: str):
+    """Load a trained NER model and tokenizer. Returns (model, tokenizer)."""
     from transformers import AutoModelForTokenClassification, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     model = AutoModelForTokenClassification.from_pretrained(model_dir)
     model.eval()
+    return model, tokenizer
+
+
+def predict_entities(text: str, model_dir: str = None, max_length: int = 512,
+                     model=None, tokenizer=None) -> list[dict]:
+    """Run NER inference: tokenize → predict BIO tags → merge spans → return entity dicts.
+
+    Returns list of {"text": str, "type": str, "start": int, "end": int}.
+    Entity text is extracted from the original text using character offsets (not tokenized text).
+
+    Pass model and tokenizer to avoid reloading on every call.
+    """
+    if model is None or tokenizer is None:
+        model, tokenizer = load_ner_model(model_dir)
 
     encoding = tokenizer(
         text,
