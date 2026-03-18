@@ -61,18 +61,68 @@ def filter_to_gold_labels(examples: list[dict]) -> list[dict]:
 
 
 def _format_seq2seq_output(example: dict) -> str:
-    """Format gold output for Approach A (no start/end, gold label set only)."""
-    entities = [{"text": e["text"], "type": e["type"]} for e in example.get("entities", [])]
-    relationships = [
-        {
-            "subject": r["subject"],
-            "object": r["object"],
-            "type": r["type"],
-            "direction": r.get("direction", "neutral"),
-        }
-        for r in example.get("relationships", [])
-    ]
-    return json.dumps({"entities": entities, "relationships": relationships}, ensure_ascii=False)
+    """Format gold output for Approach A using pipe-delimited format.
+
+    T5's tokenizer doesn't have curly braces in its vocabulary (they become <unk>),
+    so we use a linearized format instead of JSON:
+        entities: autotaxin | GENE ; LPA2 | GENE
+        relationships: autotaxin | LPA2 | associated_with | neutral
+    """
+    parts = []
+
+    entity_strs = []
+    for e in example.get("entities", []):
+        entity_strs.append(f"{e['text']} | {e['type']}")
+    parts.append("entities: " + " ; ".join(entity_strs) if entity_strs else "entities: none")
+
+    rel_strs = []
+    for r in example.get("relationships", []):
+        direction = r.get("direction", "neutral")
+        rel_strs.append(f"{r['subject']} | {r['object']} | {r['type']} | {direction}")
+    parts.append("relationships: " + " ; ".join(rel_strs) if rel_strs else "relationships: none")
+
+    return " | ".join(parts)
+
+
+def _parse_seq2seq_output(text: str) -> dict | None:
+    """Parse the pipe-delimited output format back into entities and relationships."""
+    try:
+        result = {"entities": [], "relationships": []}
+
+        # Split into entities and relationships sections
+        if "relationships:" not in text:
+            return None
+
+        ent_part, rel_part = text.split("relationships:", 1)
+        ent_part = ent_part.replace("entities:", "").strip().rstrip("|").strip()
+        rel_part = rel_part.strip()
+
+        # Parse entities
+        if ent_part and ent_part != "none":
+            for ent_str in ent_part.split(";"):
+                ent_str = ent_str.strip()
+                if "|" in ent_str:
+                    parts = [p.strip() for p in ent_str.split("|")]
+                    if len(parts) >= 2:
+                        result["entities"].append({"text": parts[0], "type": parts[1]})
+
+        # Parse relationships
+        if rel_part and rel_part != "none":
+            for rel_str in rel_part.split(";"):
+                rel_str = rel_str.strip()
+                if "|" in rel_str:
+                    parts = [p.strip() for p in rel_str.split("|")]
+                    if len(parts) >= 3:
+                        result["relationships"].append({
+                            "subject": parts[0],
+                            "object": parts[1],
+                            "type": parts[2],
+                            "direction": parts[3] if len(parts) >= 4 else "neutral",
+                        })
+
+        return result
+    except Exception:
+        return None
 
 
 def _recover_spans(text: str, entities: list[dict]) -> list[dict]:
@@ -148,28 +198,31 @@ def train_approach_a(subset: list[dict], output_dir: str, epochs: int):
             batch["input"], max_length=512, truncation=True, padding="max_length",
         )
         targets = tokenizer(
-            batch["output"], max_length=1024, truncation=True,
+            batch["output"], max_length=512, truncation=True,
         )
-        # Replace pad_token_id with -100 so they're ignored in loss
-        labels = []
-        for label_ids in targets["input_ids"]:
-            labels.append([
-                -100 if tok == tokenizer.pad_token_id else tok
-                for tok in label_ids
-            ])
-        inputs["labels"] = labels
+        inputs["labels"] = targets["input_ids"]
         return inputs
 
     train_ds = Dataset.from_list(train_data).map(
         tokenize, batched=True, remove_columns=["input", "output"]
     )
 
-    # Debug: inspect labels
+    # Debug: inspect labels and verify loss is non-zero
     sample_labels = train_ds[0]["labels"]
-    non_ignored = [l for l in sample_labels if l != -100]
-    _log(f"  [DEBUG] Label length: {len(sample_labels)}, non-ignored tokens: {len(non_ignored)}")
+    _log(f"  [DEBUG] Label length: {len(sample_labels)}")
     _log(f"  [DEBUG] First 20 label tokens: {sample_labels[:20]}")
-    _log(f"  [DEBUG] Decoded output preview: {tokenizer.decode(non_ignored)[:200]}")
+    _log(f"  [DEBUG] Decoded output preview: {tokenizer.decode(sample_labels)[:200]}")
+
+    # Manual loss check before training
+    device = "cuda" if device_is_gpu else "cpu"
+    model.to(device)
+    sample = train_ds[0]
+    test_input = torch.tensor([sample["input_ids"]], device=device)
+    test_mask = torch.tensor([sample["attention_mask"]], device=device)
+    test_labels = torch.tensor([sample["labels"]], device=device)
+    with torch.no_grad():
+        out = model(input_ids=test_input, attention_mask=test_mask, labels=test_labels)
+    _log(f"  [DEBUG] Manual forward pass loss: {out.loss.item():.6f}")
     eval_ds = None
     if eval_data:
         eval_ds = Dataset.from_list(eval_data).map(
@@ -241,16 +294,15 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
             outputs = model.generate(**inputs, max_new_tokens=256, num_beams=1)
         decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        try:
-            data = json.loads(decoded)
-            # Recover spans for entities
+        data = _parse_seq2seq_output(decoded)
+        if data is not None:
             data["entities"] = _recover_spans(ex["text"], data.get("entities", []))
             predictions.append(data)
-        except json.JSONDecodeError:
+        else:
             parse_failures += 1
             predictions.append(None)
 
-    _log(f"  Approach A eval done. JSON parse failures: {parse_failures}/{n_total}")
+    _log(f"  Approach A eval done. Parse failures: {parse_failures}/{n_total}")
     return compute_metrics(predictions, test_data)
 
 
