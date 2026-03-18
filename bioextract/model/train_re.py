@@ -91,8 +91,10 @@ def train_re(
     if not device_is_gpu:
         batch_size = min(batch_size, 4)
 
-    logger.info("Training RE: %d examples, %d epochs, batch_size=%d", len(examples), epochs, batch_size)
+    logger.info("Training RE: %d examples, %d epochs, batch_size=%d, gpu=%s",
+                len(examples), epochs, batch_size, device_is_gpu)
 
+    logger.info("Loading Flan-T5-base tokenizer and model...")
     tokenizer = AutoTokenizer.from_pretrained(FLAN_T5_BASE)
     model = AutoModelForSeq2SeqLM.from_pretrained(FLAN_T5_BASE)
 
@@ -175,7 +177,9 @@ def train_re(
         data_collator=DataCollatorForSeq2Seq(tokenizer, model=model),
     )
 
+    logger.info("Starting RE training...")
     trainer.train()
+    logger.info("RE training complete. Saving model...")
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
     logger.info("RE model saved to %s", output_dir)

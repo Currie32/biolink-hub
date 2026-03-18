@@ -199,6 +199,7 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
     from transformers import AutoTokenizer
     from peft import AutoPeftModelForSeq2SeqLM
 
+    logger.info("Evaluating Approach A: loading model from %s", model_dir)
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     try:
         model = AutoPeftModelForSeq2SeqLM.from_pretrained(model_dir)
@@ -207,8 +208,13 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
         model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
     model.eval()
 
+    n_total = len(test_data)
+    logger.info("Evaluating Approach A on %d test examples...", n_total)
     predictions = []
-    for ex in test_data:
+    parse_failures = 0
+    for i, ex in enumerate(test_data):
+        if (i + 1) % 10 == 0 or i == 0:
+            logger.info("  Approach A eval: %d/%d", i + 1, n_total)
         prompt = f"extract entities and relationships: {ex['text']}"
         inputs = tokenizer(prompt, max_length=512, truncation=True, return_tensors="pt")
 
@@ -222,8 +228,10 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
             data["entities"] = _recover_spans(ex["text"], data.get("entities", []))
             predictions.append(data)
         except json.JSONDecodeError:
+            parse_failures += 1
             predictions.append(None)
 
+    logger.info("  Approach A eval done. JSON parse failures: %d/%d", parse_failures, n_total)
     return compute_metrics(predictions, test_data)
 
 
@@ -256,35 +264,47 @@ def train_and_evaluate_approach_b(
     logger.info("Loading RE model for evaluation")
     re_model, re_tokenizer = load_re_model(re_dir)
 
+    n_total = len(test_data)
+
     # NER-only evaluation
-    logger.info("Evaluating NER standalone")
+    logger.info("Evaluating NER standalone on %d test examples...", n_total)
     ner_predictions = []
-    for ex in test_data:
+    for i, ex in enumerate(test_data):
+        if (i + 1) % 10 == 0 or i == 0:
+            logger.info("  NER eval: %d/%d", i + 1, n_total)
         pred_entities = predict_entities(ex["text"], model=ner_model, tokenizer=ner_tokenizer)
         ner_predictions.append(pred_entities)
 
     gold_entity_lists = [ex.get("entities", []) for ex in test_data]
     ner_metrics = compute_ner_metrics(ner_predictions, gold_entity_lists)
+    logger.info("  NER eval done. Entity F1: %.4f", ner_metrics["entity_f1"])
 
     # RE with gold entities (diagnostic)
-    logger.info("Evaluating RE with gold entities")
+    logger.info("Evaluating RE with gold entities on %d test examples...", n_total)
     re_gold_predictions = []
-    for ex in test_data:
+    for i, ex in enumerate(test_data):
+        if (i + 1) % 10 == 0 or i == 0:
+            logger.info("  RE (gold entities) eval: %d/%d", i + 1, n_total)
         pred_rels = predict_relationships(ex["text"], ex.get("entities", []),
                                           model=re_model, tokenizer=re_tokenizer)
         re_gold_predictions.append({"entities": ex.get("entities", []), "relationships": pred_rels})
 
     re_gold_metrics = compute_metrics(re_gold_predictions, test_data)
+    logger.info("  RE (gold entities) eval done. Rel F1: %.4f", re_gold_metrics["relationship_f1"])
 
     # End-to-end evaluation (NER errors propagate to RE)
-    logger.info("Evaluating end-to-end pipeline")
+    logger.info("Evaluating end-to-end pipeline on %d test examples...", n_total)
     e2e_predictions = []
-    for ex, pred_entities in zip(test_data, ner_predictions):
+    for i, (ex, pred_entities) in enumerate(zip(test_data, ner_predictions)):
+        if (i + 1) % 10 == 0 or i == 0:
+            logger.info("  E2E eval: %d/%d", i + 1, n_total)
         pred_rels = predict_relationships(ex["text"], pred_entities,
                                           model=re_model, tokenizer=re_tokenizer)
         e2e_predictions.append({"entities": pred_entities, "relationships": pred_rels})
 
     e2e_metrics = compute_metrics(e2e_predictions, test_data)
+    logger.info("  E2E eval done. Entity F1: %.4f, Rel F1: %.4f",
+                e2e_metrics["entity_f1"], e2e_metrics["relationship_f1"])
 
     return {
         "end_to_end": e2e_metrics,
@@ -337,11 +357,13 @@ def run_progressive(
         scale_results = {"n": n, "epochs": epochs, "n_actual": len(subset)}
 
         if "A" in approaches:
-            logger.info("--- Approach A: Single Generative Model ---")
+            logger.info("--- Approach A: Single Generative Model (N=%d) ---", n)
             a_dir = str(models_dir / f"flan_t5_n{n}")
             t0 = time.time()
+            logger.info("Training Approach A: %d examples, %d epochs...", n, epochs)
             train_approach_a(subset, a_dir, epochs)
             train_time = time.time() - t0
+            logger.info("Approach A training done in %.1fs. Starting evaluation...", train_time)
 
             t0 = time.time()
             a_metrics = evaluate_approach_a(a_dir, test_data)
@@ -350,11 +372,12 @@ def run_progressive(
             a_metrics["train_time_sec"] = round(train_time, 1)
             a_metrics["eval_time_sec"] = round(eval_time, 1)
             scale_results["approach_a"] = a_metrics
-            logger.info("Approach A results: entity_f1=%.4f, rel_f1=%.4f, parse_rate=%.4f",
-                        a_metrics["entity_f1"], a_metrics["relationship_f1"], a_metrics["json_parse_rate"])
+            logger.info("Approach A DONE (N=%d): entity_f1=%.4f, rel_f1=%.4f, parse_rate=%.4f, train=%.0fs, eval=%.0fs",
+                        n, a_metrics["entity_f1"], a_metrics["relationship_f1"],
+                        a_metrics["json_parse_rate"], train_time, eval_time)
 
         if "B" in approaches:
-            logger.info("--- Approach B: Split Pipeline ---")
+            logger.info("--- Approach B: Split Pipeline (N=%d) ---", n)
             ner_dir = str(models_dir / f"ner_n{n}")
             re_dir = str(models_dir / f"re_n{n}")
             t0 = time.time()
@@ -365,8 +388,8 @@ def run_progressive(
             scale_results["approach_b"] = b_metrics
             e2e = b_metrics["end_to_end"]
             ner = b_metrics["ner_only"]
-            logger.info("Approach B results: e2e_entity_f1=%.4f, e2e_rel_f1=%.4f, ner_f1=%.4f",
-                        e2e["entity_f1"], e2e["relationship_f1"], ner["entity_f1"])
+            logger.info("Approach B DONE (N=%d): e2e_entity_f1=%.4f, e2e_rel_f1=%.4f, ner_f1=%.4f, total=%.0fs",
+                        n, e2e["entity_f1"], e2e["relationship_f1"], ner["entity_f1"], total_time)
 
         results[f"n{n}"] = scale_results
 
