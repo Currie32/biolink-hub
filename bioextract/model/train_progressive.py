@@ -148,7 +148,7 @@ def train_approach_a(subset: list[dict], output_dir: str, epochs: int):
             batch["input"], max_length=512, truncation=True, padding="max_length",
         )
         targets = tokenizer(
-            batch["output"], max_length=1024, truncation=True, padding="max_length",
+            batch["output"], max_length=1024, truncation=True,
         )
         inputs["labels"] = targets["input_ids"]
         return inputs

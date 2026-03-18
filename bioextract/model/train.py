@@ -137,7 +137,6 @@ def train(
             batch["output"],
             max_length=max_output_length,
             truncation=True,
-            padding="max_length",
         )
         inputs["labels"] = targets["input_ids"]
         return inputs
