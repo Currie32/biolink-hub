@@ -14,13 +14,11 @@ Usage (Colab):
 from __future__ import annotations
 
 import json
-import logging
+import sys
 import time
 from pathlib import Path
 
 from .data_utils import compute_metrics, compute_ner_metrics, diverse_sample, load_data
-
-logger = logging.getLogger(__name__)
 
 # Defaults
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -38,6 +36,11 @@ SCALES = {
 # Gold label sets
 GOLD_ENTITY_TYPES = {"GENE", "DISEASE", "CHEMICAL", "VARIANT", "ORGANISM", "CELL_TYPE"}
 GOLD_REL_TYPES = {"associated_with", "binds", "upregulates", "downregulates", "regulates", "interacts_with"}
+
+
+def _log(msg: str):
+    """Print with flush so output appears immediately in Colab."""
+    print(msg, flush=True)
 
 
 def filter_to_gold_labels(examples: list[dict]) -> list[dict]:
@@ -111,8 +114,7 @@ def train_approach_a(subset: list[dict], output_dir: str, epochs: int):
     device_is_gpu = torch.cuda.is_available()
     batch_size = 4 if device_is_gpu else min(4, max(1, len(subset)))
 
-    logger.info("Approach A: training %d examples, %d epochs", len(subset), epochs)
-
+    _log(f"[Approach A] Loading Flan-T5-base model... (gpu={device_is_gpu})")
     tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
     model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-base")
 
@@ -187,10 +189,11 @@ def train_approach_a(subset: list[dict], output_dir: str, epochs: int):
         data_collator=DataCollatorForSeq2Seq(tokenizer, model=model),
     )
 
+    _log(f"[Approach A] Starting training: {len(train_data)} train examples, {epochs} epochs...")
     trainer.train()
+    _log(f"[Approach A] Training complete. Saving model to {output_dir}")
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
-    logger.info("Approach A model saved to %s", output_dir)
 
 
 def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
@@ -199,7 +202,7 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
     from transformers import AutoTokenizer
     from peft import AutoPeftModelForSeq2SeqLM
 
-    logger.info("Evaluating Approach A: loading model from %s", model_dir)
+    _log(f"[Approach A] Loading model for evaluation...")
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     try:
         model = AutoPeftModelForSeq2SeqLM.from_pretrained(model_dir)
@@ -209,12 +212,12 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
     model.eval()
 
     n_total = len(test_data)
-    logger.info("Evaluating Approach A on %d test examples...", n_total)
+    _log(f"[Approach A] Evaluating on {n_total} test examples...")
     predictions = []
     parse_failures = 0
     for i, ex in enumerate(test_data):
         if (i + 1) % 10 == 0 or i == 0:
-            logger.info("  Approach A eval: %d/%d", i + 1, n_total)
+            _log(f"  Approach A eval: {i + 1}/{n_total}")
         prompt = f"extract entities and relationships: {ex['text']}"
         inputs = tokenizer(prompt, max_length=512, truncation=True, return_tensors="pt")
 
@@ -231,7 +234,7 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
             parse_failures += 1
             predictions.append(None)
 
-    logger.info("  Approach A eval done. JSON parse failures: %d/%d", parse_failures, n_total)
+    _log(f"  Approach A eval done. JSON parse failures: {parse_failures}/{n_total}")
     return compute_metrics(predictions, test_data)
 
 
@@ -250,61 +253,62 @@ def train_and_evaluate_approach_b(
     from .train_re import train_re, predict_relationships, load_re_model
 
     # Stage 1: Train NER
-    logger.info("Approach B — Stage 1: Training NER")
+    _log(f"[Approach B] Stage 1: Training NER ({len(subset)} examples, {epochs} epochs)...")
     train_ner(subset, ner_dir, epochs=epochs)
+    _log(f"[Approach B] NER training complete.")
 
     # Stage 2: Train RE (with gold entities)
-    logger.info("Approach B — Stage 2: Training RE")
+    _log(f"[Approach B] Stage 2: Training RE ({len(subset)} examples, {epochs} epochs)...")
     train_re(subset, re_dir, epochs=epochs)
+    _log(f"[Approach B] RE training complete.")
 
     # --- Evaluation (load models once) ---
 
-    logger.info("Loading NER model for evaluation")
+    _log(f"[Approach B] Loading NER model for evaluation...")
     ner_model, ner_tokenizer = load_ner_model(ner_dir)
-    logger.info("Loading RE model for evaluation")
+    _log(f"[Approach B] Loading RE model for evaluation...")
     re_model, re_tokenizer = load_re_model(re_dir)
 
     n_total = len(test_data)
 
     # NER-only evaluation
-    logger.info("Evaluating NER standalone on %d test examples...", n_total)
+    _log(f"[Approach B] Evaluating NER on {n_total} test examples...")
     ner_predictions = []
     for i, ex in enumerate(test_data):
         if (i + 1) % 10 == 0 or i == 0:
-            logger.info("  NER eval: %d/%d", i + 1, n_total)
+            _log(f"  NER eval: {i + 1}/{n_total}")
         pred_entities = predict_entities(ex["text"], model=ner_model, tokenizer=ner_tokenizer)
         ner_predictions.append(pred_entities)
 
     gold_entity_lists = [ex.get("entities", []) for ex in test_data]
     ner_metrics = compute_ner_metrics(ner_predictions, gold_entity_lists)
-    logger.info("  NER eval done. Entity F1: %.4f", ner_metrics["entity_f1"])
+    _log(f"  NER eval done. Entity F1: {ner_metrics['entity_f1']:.4f}")
 
     # RE with gold entities (diagnostic)
-    logger.info("Evaluating RE with gold entities on %d test examples...", n_total)
+    _log(f"[Approach B] Evaluating RE (gold entities) on {n_total} test examples...")
     re_gold_predictions = []
     for i, ex in enumerate(test_data):
         if (i + 1) % 10 == 0 or i == 0:
-            logger.info("  RE (gold entities) eval: %d/%d", i + 1, n_total)
+            _log(f"  RE (gold entities) eval: {i + 1}/{n_total}")
         pred_rels = predict_relationships(ex["text"], ex.get("entities", []),
                                           model=re_model, tokenizer=re_tokenizer)
         re_gold_predictions.append({"entities": ex.get("entities", []), "relationships": pred_rels})
 
     re_gold_metrics = compute_metrics(re_gold_predictions, test_data)
-    logger.info("  RE (gold entities) eval done. Rel F1: %.4f", re_gold_metrics["relationship_f1"])
+    _log(f"  RE (gold entities) eval done. Rel F1: {re_gold_metrics['relationship_f1']:.4f}")
 
     # End-to-end evaluation (NER errors propagate to RE)
-    logger.info("Evaluating end-to-end pipeline on %d test examples...", n_total)
+    _log(f"[Approach B] Evaluating end-to-end pipeline on {n_total} test examples...")
     e2e_predictions = []
     for i, (ex, pred_entities) in enumerate(zip(test_data, ner_predictions)):
         if (i + 1) % 10 == 0 or i == 0:
-            logger.info("  E2E eval: %d/%d", i + 1, n_total)
+            _log(f"  E2E eval: {i + 1}/{n_total}")
         pred_rels = predict_relationships(ex["text"], pred_entities,
                                           model=re_model, tokenizer=re_tokenizer)
         e2e_predictions.append({"entities": pred_entities, "relationships": pred_rels})
 
     e2e_metrics = compute_metrics(e2e_predictions, test_data)
-    logger.info("  E2E eval done. Entity F1: %.4f, Rel F1: %.4f",
-                e2e_metrics["entity_f1"], e2e_metrics["relationship_f1"])
+    _log(f"  E2E eval done. Entity F1: {e2e_metrics['entity_f1']:.4f}, Rel F1: {e2e_metrics['relationship_f1']:.4f}")
 
     return {
         "end_to_end": e2e_metrics,
@@ -337,33 +341,35 @@ def run_progressive(
     models_dir.mkdir(parents=True, exist_ok=True)
 
     # Load data
+    _log(f"Loading training data from {train_path}")
     all_train = load_data(train_path)
+    _log(f"Loading test data from {test_path}")
     test_data = load_data(test_path)
 
     # Filter to gold label set
     all_train = filter_to_gold_labels(all_train)
     test_data = filter_to_gold_labels(test_data)
+    _log(f"Data loaded: {len(all_train)} train, {len(test_data)} test (filtered to gold labels)")
 
     results = {}
 
     for n in scales:
         epochs = SCALES.get(n, 5)
-        logger.info("=" * 60)
-        logger.info("SCALE N=%d, epochs=%d", n, epochs)
-        logger.info("=" * 60)
+        _log(f"\n{'=' * 60}")
+        _log(f"SCALE N={n}, epochs={epochs}")
+        _log(f"{'=' * 60}")
 
         # Diverse sample
         subset = diverse_sample(all_train, n)
         scale_results = {"n": n, "epochs": epochs, "n_actual": len(subset)}
 
         if "A" in approaches:
-            logger.info("--- Approach A: Single Generative Model (N=%d) ---", n)
+            _log(f"\n--- Approach A: Single Generative Model (N={n}) ---")
             a_dir = str(models_dir / f"flan_t5_n{n}")
             t0 = time.time()
-            logger.info("Training Approach A: %d examples, %d epochs...", n, epochs)
             train_approach_a(subset, a_dir, epochs)
             train_time = time.time() - t0
-            logger.info("Approach A training done in %.1fs. Starting evaluation...", train_time)
+            _log(f"[Approach A] Training done in {train_time:.1f}s. Starting evaluation...")
 
             t0 = time.time()
             a_metrics = evaluate_approach_a(a_dir, test_data)
@@ -372,12 +378,12 @@ def run_progressive(
             a_metrics["train_time_sec"] = round(train_time, 1)
             a_metrics["eval_time_sec"] = round(eval_time, 1)
             scale_results["approach_a"] = a_metrics
-            logger.info("Approach A DONE (N=%d): entity_f1=%.4f, rel_f1=%.4f, parse_rate=%.4f, train=%.0fs, eval=%.0fs",
-                        n, a_metrics["entity_f1"], a_metrics["relationship_f1"],
-                        a_metrics["json_parse_rate"], train_time, eval_time)
+            _log(f"\n>>> Approach A DONE (N={n}): entity_f1={a_metrics['entity_f1']:.4f}, "
+                 f"rel_f1={a_metrics['relationship_f1']:.4f}, parse_rate={a_metrics['json_parse_rate']:.4f}, "
+                 f"train={train_time:.0f}s, eval={eval_time:.0f}s")
 
         if "B" in approaches:
-            logger.info("--- Approach B: Split Pipeline (N=%d) ---", n)
+            _log(f"\n--- Approach B: Split Pipeline (N={n}) ---")
             ner_dir = str(models_dir / f"ner_n{n}")
             re_dir = str(models_dir / f"re_n{n}")
             t0 = time.time()
@@ -388,8 +394,9 @@ def run_progressive(
             scale_results["approach_b"] = b_metrics
             e2e = b_metrics["end_to_end"]
             ner = b_metrics["ner_only"]
-            logger.info("Approach B DONE (N=%d): e2e_entity_f1=%.4f, e2e_rel_f1=%.4f, ner_f1=%.4f, total=%.0fs",
-                        n, e2e["entity_f1"], e2e["relationship_f1"], ner["entity_f1"], total_time)
+            _log(f"\n>>> Approach B DONE (N={n}): e2e_entity_f1={e2e['entity_f1']:.4f}, "
+                 f"e2e_rel_f1={e2e['relationship_f1']:.4f}, ner_f1={ner['entity_f1']:.4f}, "
+                 f"total={total_time:.0f}s")
 
         results[f"n{n}"] = scale_results
 
@@ -397,7 +404,7 @@ def run_progressive(
     results_path = models_dir / "progressive_results.json"
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
-    logger.info("Results saved to %s", results_path)
+    _log(f"\nResults saved to {results_path}")
 
     # Print summary table
     _print_summary(results)
@@ -427,6 +434,4 @@ def _print_summary(results: dict):
 
         print(f"{n:>5} | {a_str} | {b_str}")
 
-    print("=" * 80)
-
-
+    print("=" * 80, flush=True)

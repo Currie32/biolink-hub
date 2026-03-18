@@ -128,10 +128,8 @@ def train_ner(
     if not device_is_gpu:
         batch_size = min(batch_size, 4)
 
-    logger.info("Training NER: %d examples, %d epochs, batch_size=%d, gpu=%s",
-                len(examples), epochs, batch_size, device_is_gpu)
-
-    logger.info("Loading PubMedBERT tokenizer and model...")
+    print(f"  [NER] Config: {len(examples)} examples, {epochs} epochs, batch_size={batch_size}, gpu={device_is_gpu}", flush=True)
+    print(f"  [NER] Loading PubMedBERT tokenizer and model...", flush=True)
     tokenizer = AutoTokenizer.from_pretrained(PUBMEDBERT)
     model = AutoModelForTokenClassification.from_pretrained(
         PUBMEDBERT,
@@ -174,12 +172,12 @@ def train_ner(
         data_collator=DataCollatorForTokenClassification(tokenizer),
     )
 
-    logger.info("Starting NER training...")
+    print(f"  [NER] Starting training...", flush=True)
     trainer.train()
-    logger.info("NER training complete. Saving model...")
+    print(f"  [NER] Training complete. Saving model...", flush=True)
     trainer.save_model(output_dir)
     tokenizer.save_pretrained(output_dir)
-    logger.info("NER model saved to %s", output_dir)
+    print(f"  [NER] Model saved to {output_dir}", flush=True)
 
 
 def load_ner_model(model_dir: str):
