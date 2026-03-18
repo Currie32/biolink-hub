@@ -188,13 +188,14 @@ def load_re_model(model_dir: str):
     from transformers import AutoTokenizer
     from peft import AutoPeftModelForSeq2SeqLM
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     try:
         model = AutoPeftModelForSeq2SeqLM.from_pretrained(model_dir)
     except Exception:
         from transformers import AutoModelForSeq2SeqLM
         model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
-    model.eval()
+    model.to(device).eval()
     return model, tokenizer
 
 
@@ -217,19 +218,20 @@ def predict_relationships(
         model, tokenizer = load_re_model(model_dir)
 
     input_text = format_re_input(text, entities)
+    device = next(model.parameters()).device
     inputs = tokenizer(
         input_text,
         max_length=max_input_length,
         truncation=True,
         return_tensors="pt",
     )
+    inputs = {k: v.to(device) for k, v in inputs.items()}
 
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
             max_new_tokens=max_output_length,
-            num_beams=2,
-            early_stopping=True,
+            num_beams=1,
         )
     decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
 

@@ -184,9 +184,10 @@ def load_ner_model(model_dir: str):
     """Load a trained NER model and tokenizer. Returns (model, tokenizer)."""
     from transformers import AutoModelForTokenClassification, AutoTokenizer
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     model = AutoModelForTokenClassification.from_pretrained(model_dir)
-    model.eval()
+    model.to(device).eval()
     return model, tokenizer
 
 
@@ -211,6 +212,8 @@ def predict_entities(text: str, model_dir: str = None, max_length: int = 512,
     )
 
     offset_mapping = encoding.pop("offset_mapping")[0].tolist()
+    device = next(model.parameters()).device
+    encoding = {k: v.to(device) for k, v in encoding.items()}
 
     with torch.no_grad():
         outputs = model(**encoding)

@@ -202,14 +202,15 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
     from transformers import AutoTokenizer
     from peft import AutoPeftModelForSeq2SeqLM
 
-    _log(f"[Approach A] Loading model for evaluation...")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    _log(f"[Approach A] Loading model for evaluation (device={device})...")
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     try:
         model = AutoPeftModelForSeq2SeqLM.from_pretrained(model_dir)
     except Exception:
         from transformers import AutoModelForSeq2SeqLM
         model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
-    model.eval()
+    model.to(device).eval()
 
     n_total = len(test_data)
     _log(f"[Approach A] Evaluating on {n_total} test examples...")
@@ -220,9 +221,10 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
             _log(f"  Approach A eval: {i + 1}/{n_total}")
         prompt = f"extract entities and relationships: {ex['text']}"
         inputs = tokenizer(prompt, max_length=512, truncation=True, return_tensors="pt")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
 
         with torch.no_grad():
-            outputs = model.generate(**inputs, max_new_tokens=1024, num_beams=2, early_stopping=True)
+            outputs = model.generate(**inputs, max_new_tokens=512, num_beams=1)
         decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
         try:
