@@ -224,7 +224,7 @@ def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
         inputs = {k: v.to(device) for k, v in inputs.items()}
 
         with torch.no_grad():
-            outputs = model.generate(**inputs, max_new_tokens=512, num_beams=1)
+            outputs = model.generate(**inputs, max_new_tokens=256, num_beams=1)
         decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
         try:

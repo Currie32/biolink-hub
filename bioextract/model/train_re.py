@@ -204,7 +204,7 @@ def predict_relationships(
     entities: list[dict],
     model_dir: str = None,
     max_input_length: int = 512,
-    max_output_length: int = 512,
+    max_output_length: int = 256,
     model=None,
     tokenizer=None,
 ) -> list[dict]:
