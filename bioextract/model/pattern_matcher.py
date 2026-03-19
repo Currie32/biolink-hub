@@ -258,6 +258,17 @@ _STOPWORDS = {
     "electrophoresis", "chromatography", "spectroscopy", "microscopy",
     "actinomycin D", "actinomycin",  # experimental reagent, not therapeutic
     "multivariate analyses", "multivariate analysis",
+    # MeSH terms that are not biomedical entities
+    "japan", "japanese", "china", "chinese", "korea", "korean",
+    "european", "caucasian", "caucasians", "african", "asian",
+    "administration", "organization and administration",
+    "5'-untranslated region", "untranslated region", "untranslated regions",
+    "3'-untranslated region",
+    "trinucleotide repeat", "trinucleotide repeats",
+    "chromosome", "chromosomes", "autosomal",
+    "skin biopsy", "biopsy",
+    "intraperitoneal", "subcutaneous", "intravenous",
+    "placebo", "vector",
     # Generic words that match dictionary entries
     "who", "plays", "coding", "foundation", "autopsy", "impact",
     "drugs", "other", "position", "association", "associations",

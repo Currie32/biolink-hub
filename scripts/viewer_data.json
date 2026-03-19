@@ -116,78 +116,150 @@
     "predicted": {
       "entities": [
         {
-          "text": "FMR1",
-          "type": "GENE",
-          "start": 47,
-          "end": 51,
-          "canonical_id": "gene:2332",
-          "canonical_name": "FMR1",
-          "confidence": 0.95
-        },
-        {
           "text": "Fragile X syndrome",
           "type": "DISEASE",
-          "start": 100,
-          "end": 118,
+          "start": 119,
+          "end": 137,
           "canonical_id": "doid:14261",
           "canonical_name": "fragile X syndrome",
           "confidence": 0.95
         },
         {
+          "text": "Fragile X syndrome",
+          "type": "DISEASE",
+          "start": 119,
+          "end": 137,
+          "canonical_id": "doid:14261",
+          "canonical_name": "fragile X syndrome",
+          "confidence": 0.95
+        },
+        {
+          "text": "polymerase chain reaction",
+          "type": "CHEMICAL",
+          "start": 575,
+          "end": 600,
+          "canonical_id": "mesh:D016133",
+          "canonical_name": "Polymerase Chain Reaction",
+          "confidence": 0.95
+        },
+        {
+          "text": "mentally retarded",
+          "type": "CHEMICAL",
+          "start": 82,
+          "end": 99,
+          "canonical_id": "mesh:D019989",
+          "canonical_name": "Persons with Intellectual Disabilities",
+          "confidence": 0.95
+        },
+        {
           "text": "mental retardation",
           "type": "DISEASE",
-          "start": 147,
-          "end": 165,
+          "start": 174,
+          "end": 192,
           "canonical_id": "doid:1059",
           "canonical_name": "intellectual disability",
           "confidence": 0.95
         },
         {
+          "text": "mental retardation",
+          "type": "PHENOTYPE",
+          "start": 174,
+          "end": 192,
+          "canonical_id": "hp:0001249",
+          "canonical_name": "Intellectual disability",
+          "confidence": 0.95
+        },
+        {
+          "text": "mental retardation",
+          "type": "DISEASE",
+          "start": 174,
+          "end": 192,
+          "canonical_id": "doid:1059",
+          "canonical_name": "intellectual disability",
+          "confidence": 0.95
+        },
+        {
+          "text": "FMR1",
+          "type": "GENE",
+          "start": 56,
+          "end": 60,
+          "canonical_id": "gene:2332",
+          "canonical_name": "FMR1",
+          "confidence": 0.95
+        },
+        {
+          "text": "FMR1",
+          "type": "GENE",
+          "start": 56,
+          "end": 60,
+          "canonical_id": "gene:2332",
+          "canonical_name": "FMR1",
+          "confidence": 0.95
+        },
+        {
+          "text": "FMR1",
+          "type": "GENE",
+          "start": 56,
+          "end": 60,
+          "canonical_id": "gene:2332",
+          "canonical_name": "FMR1",
+          "confidence": 0.95
+        },
+        {
+          "text": "males",
+          "type": "CHEMICAL",
+          "start": 196,
+          "end": 201,
+          "canonical_id": "mesh:D008297",
+          "canonical_name": "Male",
+          "confidence": 0.95
+        },
+        {
+          "text": "autism",
+          "type": "PHENOTYPE",
+          "start": 261,
+          "end": 267,
+          "canonical_id": "hp:0000717",
+          "canonical_name": "Autism",
+          "confidence": 0.95
+        },
+        {
           "text": "autism",
           "type": "DISEASE",
-          "start": 203,
-          "end": 209,
+          "start": 261,
+          "end": 267,
           "canonical_id": "doid:12849",
           "canonical_name": "autistic disorder",
           "confidence": 0.95
         },
         {
-          "text": "autistic",
-          "type": "DISEASE",
-          "start": 23,
-          "end": 31,
-          "canonical_id": "doid:12849",
-          "canonical_name": "autistic disorder",
-          "confidence": 0.775
+          "text": "autism",
+          "type": "PHENOTYPE",
+          "start": 261,
+          "end": 267,
+          "canonical_id": "hp:0000717",
+          "canonical_name": "Autism",
+          "confidence": 0.95
         },
         {
-          "text": "mentally retarded",
-          "type": "DISEASE",
-          "start": 36,
-          "end": 53,
-          "canonical_id": "mesh:D019989",
-          "canonical_name": "Persons with Intellectual Disabilities",
-          "confidence": 0.85
-        },
-        {
-          "text": "FMR1 gene",
+          "text": "large",
           "type": "GENE",
-          "start": 45,
-          "end": 54,
-          "canonical_id": "gene:158521",
-          "canonical_name": "FMR1NB",
-          "confidence": 0.7
+          "start": 937,
+          "end": 942,
+          "canonical_id": "gene:9215",
+          "canonical_name": "LARGE1",
+          "confidence": 0.95
         }
       ],
       "relationships": [
         {
           "subject": "Fragile X syndrome",
-          "predicate": "causes",
+          "predicate": "",
           "object": "mental retardation",
-          "type": "causes",
+          "type": "upregulates",
           "direction": "positive",
           "negated": false,
-          "confidence": 0.9,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -196,12 +268,12 @@
         },
         {
           "subject": "Fragile X syndrome",
-          "predicate": "associated_with",
-          "object": "autistic",
-          "type": "associated_with",
-          "direction": "neutral",
+          "predicate": "",
+          "object": "autism",
+          "type": "upregulates",
+          "direction": "positive",
           "negated": false,
-          "confidence": 0.9,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -210,12 +282,12 @@
         },
         {
           "subject": "FMR1",
-          "predicate": "associated_with",
+          "predicate": "",
           "object": "Fragile X syndrome",
           "type": "associated_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.75,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -224,12 +296,12 @@
         },
         {
           "subject": "FMR1",
-          "predicate": "associated_with",
-          "object": "autistic",
+          "predicate": "",
+          "object": "autism",
           "type": "associated_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.9,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -238,12 +310,12 @@
         },
         {
           "subject": "FMR1",
-          "predicate": "associated_with",
+          "predicate": "",
           "object": "mental retardation",
           "type": "associated_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.9,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -378,46 +450,244 @@
     "predicted": {
       "entities": [
         {
+          "text": "Arabidopsis thaliana",
+          "type": "ORGANISM",
+          "start": 558,
+          "end": 578,
+          "canonical_id": "taxon:3702",
+          "canonical_name": "Arabidopsis thaliana",
+          "confidence": 0.95
+        },
+        {
+          "text": "Arabidopsis thaliana",
+          "type": "ORGANISM",
+          "start": 558,
+          "end": 578,
+          "canonical_id": "taxon:3702",
+          "canonical_name": "Arabidopsis thaliana",
+          "confidence": 0.95
+        },
+        {
+          "text": "jasmonic acid",
+          "type": "CHEMICAL",
+          "start": 1306,
+          "end": 1319,
+          "canonical_id": "chebi:18292",
+          "canonical_name": "jasmonic acid",
+          "confidence": 0.95
+        },
+        {
+          "text": "Plants",
+          "type": "ORGANISM",
+          "start": 57,
+          "end": 63,
+          "canonical_id": "mesh:D010944",
+          "canonical_name": "Plants",
+          "confidence": 0.95
+        },
+        {
+          "text": "Plants",
+          "type": "ORGANISM",
+          "start": 57,
+          "end": 63,
+          "canonical_id": "mesh:D010944",
+          "canonical_name": "Plants",
+          "confidence": 0.95
+        },
+        {
+          "text": "stem",
+          "type": "CHEMICAL",
+          "start": 94,
+          "end": 98,
+          "canonical_id": "mesh:D017348",
+          "canonical_name": "Microscopy, Electron, Scanning Transmission",
+          "confidence": 0.95
+        },
+        {
+          "text": "root",
+          "type": "ORGANISM",
+          "start": 203,
+          "end": 207,
+          "canonical_id": "taxon:1",
+          "canonical_name": "root",
+          "confidence": 0.95
+        },
+        {
+          "text": "tips",
+          "type": "CHEMICAL",
+          "start": 208,
+          "end": 212,
+          "canonical_id": "mesh:D019168",
+          "canonical_name": "Portasystemic Shunt, Transjugular Intrahepatic",
+          "confidence": 0.95
+        },
+        {
+          "text": "tips",
+          "type": "ORGANISM",
+          "start": 208,
+          "end": 212,
+          "canonical_id": "taxon:320189",
+          "canonical_name": "Colotis",
+          "confidence": 0.95
+        },
+        {
+          "text": "regulation",
+          "type": "CHEMICAL",
+          "start": 233,
+          "end": 243,
+          "canonical_id": "mesh:D012926",
+          "canonical_name": "Social Control, Formal",
+          "confidence": 0.95
+        },
+        {
+          "text": "CLE",
+          "type": "GENE",
+          "start": 276,
+          "end": 279,
+          "canonical_id": "gene:8893",
+          "canonical_name": "EIF2B5",
+          "confidence": 0.95
+        },
+        {
+          "text": "CLE",
+          "type": "GENE",
+          "start": 276,
+          "end": 279,
+          "canonical_id": "gene:8893",
+          "canonical_name": "EIF2B5",
+          "confidence": 0.95
+        },
+        {
+          "text": "kinase",
+          "type": "CHEMICAL",
+          "start": 326,
+          "end": 332,
+          "canonical_id": "mesh:D010770",
+          "canonical_name": "Phosphotransferases",
+          "confidence": 0.95
+        },
+        {
+          "text": "lateral",
+          "type": "PHENOTYPE",
+          "start": 422,
+          "end": 429,
+          "canonical_id": "hp:0025275",
+          "canonical_name": "Lateral",
+          "confidence": 0.95
+        },
+        {
+          "text": "organization",
+          "type": "CHEMICAL",
+          "start": 920,
+          "end": 932,
+          "canonical_id": "mesh:D009938",
+          "canonical_name": "Organizations",
+          "confidence": 0.95
+        },
+        {
+          "text": "roles",
+          "type": "PHENOTYPE",
+          "start": 955,
+          "end": 960,
+          "canonical_id": "mesh:D012380",
+          "canonical_name": "Role",
+          "confidence": 0.95
+        },
+        {
+          "text": "apical",
+          "type": "PHENOTYPE",
+          "start": 1152,
+          "end": 1158,
+          "canonical_id": "hp:0033820",
+          "canonical_name": "Apical",
+          "confidence": 0.95
+        },
+        {
+          "text": "hormone",
+          "type": "CHEMICAL",
+          "start": 1320,
+          "end": 1327,
+          "canonical_id": "chebi:24621",
+          "canonical_name": "hormone",
+          "confidence": 0.95
+        },
+        {
+          "text": "hormone",
+          "type": "CHEMICAL",
+          "start": 1320,
+          "end": 1327,
+          "canonical_id": "chebi:24621",
+          "canonical_name": "hormone",
+          "confidence": 0.95
+        },
+        {
+          "text": "anatomies",
+          "type": "CHEMICAL",
+          "start": 1556,
+          "end": 1565,
+          "canonical_id": "mesh:D000715",
+          "canonical_name": "Anatomy",
+          "confidence": 0.95
+        },
+        {
+          "text": "spatial",
+          "type": "GENE",
+          "start": 1608,
+          "end": 1615,
+          "canonical_id": "gene:219793",
+          "canonical_name": "TBATA",
+          "confidence": 0.95
+        },
+        {
+          "text": "cascades",
+          "type": "GENE",
+          "start": 1656,
+          "end": 1664,
+          "canonical_id": "gene:401103",
+          "canonical_name": "LINC01994",
+          "confidence": 0.95
+        },
+        {
+          "text": "production",
+          "type": "CHEMICAL",
+          "start": 1701,
+          "end": 1711,
+          "canonical_id": "mesh:D004467",
+          "canonical_name": "Economics",
+          "confidence": 0.95
+        },
+        {
           "text": "MOL1",
           "type": "GENE",
           "start": 0,
           "end": 4,
           "canonical_id": null,
           "canonical_name": null,
-          "confidence": 0.95
-        },
-        {
-          "text": "CLE peptide",
-          "type": "GENE",
-          "start": 0,
-          "end": 0,
-          "canonical_id": null,
-          "canonical_name": null,
-          "confidence": 0.95
+          "confidence": 0.85
         },
         {
           "text": "leucine-rich repeat receptor-like kinase",
           "type": "GENE",
-          "start": 0,
-          "end": 0,
+          "start": 292,
+          "end": 332,
           "canonical_id": null,
           "canonical_name": null,
-          "confidence": 0.95
+          "confidence": 0.85
         },
         {
           "text": "LRR-RLK",
           "type": "GENE",
-          "start": 0,
-          "end": 0,
+          "start": 334,
+          "end": 341,
           "canonical_id": null,
           "canonical_name": null,
-          "confidence": 0.95
+          "confidence": 0.85
         },
         {
           "text": "CLE41",
           "type": "GENE",
-          "start": 0,
-          "end": 0,
+          "start": 718,
+          "end": 723,
           "canonical_id": null,
           "canonical_name": null,
           "confidence": 0.85
@@ -425,8 +695,8 @@
         {
           "text": "PXY",
           "type": "GENE",
-          "start": 0,
-          "end": 0,
+          "start": 724,
+          "end": 727,
           "canonical_id": "gene:92370",
           "canonical_name": "PXYLP1",
           "confidence": 0.6
@@ -434,192 +704,40 @@
         {
           "text": "CLV1",
           "type": "GENE",
-          "start": 0,
-          "end": 0,
+          "start": 1123,
+          "end": 1127,
           "canonical_id": null,
           "canonical_name": null,
-          "confidence": 0.95
-        },
-        {
-          "text": "ethylene",
-          "type": "CHEMICAL",
-          "start": 0,
-          "end": 0,
-          "canonical_id": "mesh:D005027",
-          "canonical_name": "Ethylene Oxide",
-          "confidence": 0.775
-        },
-        {
-          "text": "jasmonic acid",
-          "type": "CHEMICAL",
-          "start": 0,
-          "end": 0,
-          "canonical_id": "chebi:18292",
-          "canonical_name": "jasmonic acid",
           "confidence": 0.85
-        },
-        {
-          "text": "Arabidopsis thaliana",
-          "type": "ORGANISM",
-          "start": 0,
-          "end": 0,
-          "canonical_id": "taxon:3702",
-          "canonical_name": "Arabidopsis thaliana",
-          "confidence": 0.95
-        },
-        {
-          "text": "Arabidopsis",
-          "type": "ORGANISM",
-          "start": 0,
-          "end": 0,
-          "canonical_id": "mesh:D017360",
-          "canonical_name": "Arabidopsis",
-          "confidence": 0.95
         },
         {
           "text": "CLV1 deficiency",
           "type": "DISEASE",
-          "start": 0,
-          "end": 0,
+          "start": 1123,
+          "end": 1138,
           "canonical_id": null,
           "canonical_name": null,
           "confidence": 0.85
         },
         {
-          "text": "ethylene signaling pathway",
-          "type": "PATHWAY",
-          "start": 0,
-          "end": 0,
-          "canonical_id": null,
-          "canonical_name": null,
-          "confidence": 0.85
-        },
-        {
-          "text": "jasmonic acid hormone signaling pathway",
-          "type": "PATHWAY",
-          "start": 0,
-          "end": 0,
-          "canonical_id": null,
-          "canonical_name": null,
-          "confidence": 0.85
-        },
-        {
-          "text": "CLE41/PXY signaling module",
-          "type": "PATHWAY",
-          "start": 0,
-          "end": 0,
-          "canonical_id": null,
-          "canonical_name": null,
-          "confidence": 0.85
+          "text": "ethylene",
+          "type": "CHEMICAL",
+          "start": 1293,
+          "end": 1301,
+          "canonical_id": "mesh:D005027",
+          "canonical_name": "Ethylene Oxide",
+          "confidence": 0.775
         }
       ],
       "relationships": [
         {
           "subject": "MOL1",
-          "predicate": "required for",
-          "object": "CLE41/PXY signaling module",
+          "predicate": "",
+          "object": "CLE41",
           "type": "regulates",
           "direction": "negative",
           "negated": false,
-          "confidence": 0.75,
-          "context": {
-            "organism": "Arabidopsis thaliana",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "MOL1",
-          "predicate": "acts in opposing manner to",
-          "object": "CLE41",
-          "type": "inhibits",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": "Arabidopsis thaliana",
-            "cell_type": null,
-            "experiment_type": null
-          }
-        },
-        {
-          "subject": "MOL1",
-          "predicate": "acts in opposing manner to",
-          "object": "PXY",
-          "type": "inhibits",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": "Arabidopsis thaliana",
-            "cell_type": null,
-            "experiment_type": null
-          }
-        },
-        {
-          "subject": "MOL1",
-          "predicate": "rescues",
-          "object": "CLV1 deficiency",
-          "type": "treats",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": "Arabidopsis thaliana",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "PXY",
-          "predicate": "does not rescue",
-          "object": "CLV1 deficiency",
-          "type": "treats",
-          "direction": "negative",
-          "negated": true,
-          "confidence": 0.75,
-          "context": {
-            "organism": "Arabidopsis thaliana",
-            "cell_type": null,
-            "experiment_type": null
-          }
-        },
-        {
-          "subject": "MOL1",
-          "predicate": "represses",
-          "object": "ethylene signaling pathway",
-          "type": "inhibits",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.75,
-          "context": {
-            "organism": "Arabidopsis thaliana",
-            "cell_type": null,
-            "experiment_type": null
-          }
-        },
-        {
-          "subject": "MOL1",
-          "predicate": "represses",
-          "object": "jasmonic acid hormone signaling pathway",
-          "type": "inhibits",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.75,
-          "context": {
-            "organism": "Arabidopsis thaliana",
-            "cell_type": null,
-            "experiment_type": null
-          }
-        },
-        {
-          "subject": "ethylene",
-          "predicate": "associated with",
-          "object": "ethylene signaling pathway",
-          "type": "associated_with",
-          "direction": "neutral",
-          "negated": false,
-          "confidence": 0.75,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -627,13 +745,13 @@
           }
         },
         {
-          "subject": "jasmonic acid",
-          "predicate": "associated with",
-          "object": "jasmonic acid hormone signaling pathway",
-          "type": "associated_with",
-          "direction": "neutral",
+          "subject": "MOL1",
+          "predicate": "",
+          "object": "PXY",
+          "type": "regulates",
+          "direction": "negative",
           "negated": false,
-          "confidence": 0.75,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -642,12 +760,12 @@
         },
         {
           "subject": "CLE41",
-          "predicate": "part of",
-          "object": "CLE41/PXY signaling module",
-          "type": "associated_with",
+          "predicate": "",
+          "object": "PXY",
+          "type": "interacts_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.75,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -655,13 +773,97 @@
           }
         },
         {
-          "subject": "PXY",
-          "predicate": "part of",
-          "object": "CLE41/PXY signaling module",
+          "subject": "CLE",
+          "predicate": "",
+          "object": "leucine-rich repeat receptor-like kinase",
+          "type": "interacts_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 1.0,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "CLE",
+          "predicate": "",
+          "object": "LRR-RLK",
+          "type": "interacts_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 1.0,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "MOL1",
+          "predicate": "",
+          "object": "CLV1 deficiency",
+          "type": "downregulates",
+          "direction": "negative",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "MOL1",
+          "predicate": "",
+          "object": "ethylene",
+          "type": "downregulates",
+          "direction": "negative",
+          "negated": false,
+          "confidence": 1.0,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "MOL1",
+          "predicate": "",
+          "object": "jasmonic acid",
+          "type": "downregulates",
+          "direction": "negative",
+          "negated": false,
+          "confidence": 1.0,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "LRR-RLK",
+          "predicate": "",
+          "object": "MOL1",
           "type": "associated_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.75,
+          "confidence": 0.7,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "LRR-RLK",
+          "predicate": "",
+          "object": "PXY",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.7,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -803,16 +1005,43 @@
     "predicted": {
       "entities": [
         {
-          "text": "metoprolol",
-          "type": "CHEMICAL",
-          "start": 97,
-          "end": 107,
-          "canonical_id": "chebi:6904",
-          "canonical_name": "metoprolol",
-          "confidence": 0.95
+          "text": "beta-1 adrenoceptor",
+          "type": "GENE",
+          "start": 390,
+          "end": 409,
+          "canonical_id": "gene:153",
+          "canonical_name": "ADRB1",
+          "confidence": 0.806
         },
         {
-          "text": "debrisoquine",
+          "text": "beta-2 adrenoceptor",
+          "type": "GENE",
+          "start": 511,
+          "end": 530,
+          "canonical_id": "gene:154",
+          "canonical_name": "ADRB2",
+          "confidence": 0.806
+        },
+        {
+          "text": "1 hr",
+          "type": "CELL_TYPE",
+          "start": 992,
+          "end": 996,
+          "canonical_id": "cvcl:CVCL_2676",
+          "canonical_name": "P3HR-1",
+          "confidence": 0.65
+        },
+        {
+          "text": "1 hr",
+          "type": "CELL_TYPE",
+          "start": 992,
+          "end": 996,
+          "canonical_id": "cvcl:CVCL_2676",
+          "canonical_name": "P3HR-1",
+          "confidence": 0.65
+        },
+        {
+          "text": "Debrisoquine",
           "type": "CHEMICAL",
           "start": 0,
           "end": 12,
@@ -821,19 +1050,100 @@
           "confidence": 0.95
         },
         {
-          "text": "sparteine",
+          "text": "metoprolol",
           "type": "CHEMICAL",
-          "start": 172,
-          "end": 181,
-          "canonical_id": "chebi:28827",
-          "canonical_name": "sparteine",
+          "start": 88,
+          "end": 98,
+          "canonical_id": "chebi:6904",
+          "canonical_name": "metoprolol",
+          "confidence": 0.95
+        },
+        {
+          "text": "metoprolol",
+          "type": "CHEMICAL",
+          "start": 88,
+          "end": 98,
+          "canonical_id": "chebi:6904",
+          "canonical_name": "metoprolol",
+          "confidence": 0.95
+        },
+        {
+          "text": "EMs",
+          "type": "GENE",
+          "start": 456,
+          "end": 459,
+          "canonical_id": "gene:101927746",
+          "canonical_name": "EMSLR",
+          "confidence": 0.95
+        },
+        {
+          "text": "drug",
+          "type": "CHEMICAL",
+          "start": 561,
+          "end": 565,
+          "canonical_id": "chebi:23888",
+          "canonical_name": "drug",
+          "confidence": 0.95
+        },
+        {
+          "text": "drug",
+          "type": "CHEMICAL",
+          "start": 561,
+          "end": 565,
+          "canonical_id": "chebi:23888",
+          "canonical_name": "drug",
+          "confidence": 0.95
+        },
+        {
+          "text": "hypokalemia",
+          "type": "DISEASE",
+          "start": 637,
+          "end": 648,
+          "canonical_id": "doid:4500",
+          "canonical_name": "hypokalemia",
+          "confidence": 0.95
+        },
+        {
+          "text": "hypokalemia",
+          "type": "PHENOTYPE",
+          "start": 637,
+          "end": 648,
+          "canonical_id": "hp:0002900",
+          "canonical_name": "Hypokalemia",
+          "confidence": 0.95
+        },
+        {
+          "text": "hypokalemia",
+          "type": "DISEASE",
+          "start": 637,
+          "end": 648,
+          "canonical_id": "doid:4500",
+          "canonical_name": "hypokalemia",
+          "confidence": 0.95
+        },
+        {
+          "text": "PMs",
+          "type": "GENE",
+          "start": 796,
+          "end": 799,
+          "canonical_id": "gene:5542",
+          "canonical_name": "PRB1",
           "confidence": 0.95
         },
         {
           "text": "terbutaline",
           "type": "CHEMICAL",
-          "start": 476,
-          "end": 487,
+          "start": 617,
+          "end": 628,
+          "canonical_id": "chebi:9449",
+          "canonical_name": "terbutaline",
+          "confidence": 0.95
+        },
+        {
+          "text": "terbutaline",
+          "type": "CHEMICAL",
+          "start": 617,
+          "end": 628,
           "canonical_id": "chebi:9449",
           "canonical_name": "terbutaline",
           "confidence": 0.95
@@ -841,141 +1151,142 @@
         {
           "text": "potassium",
           "type": "CHEMICAL",
-          "start": 1043,
-          "end": 1052,
+          "start": 1227,
+          "end": 1236,
           "canonical_id": "mesh:D011188",
           "canonical_name": "Potassium",
-          "confidence": 0.85
+          "confidence": 0.95
         },
         {
           "text": "alpha-hydroxymetoprolol",
           "type": "CHEMICAL",
-          "start": 1075,
-          "end": 1097,
+          "start": 1294,
+          "end": 1317,
           "canonical_id": "chebi:165230",
           "canonical_name": "alpha-Hydroxymetoprolol",
           "confidence": 0.95
         },
         {
-          "text": "beta-2 receptor",
-          "type": "GENE",
-          "start": 27,
-          "end": 42,
-          "canonical_id": "gene:154",
-          "canonical_name": "ADRB2",
-          "confidence": 0.85
-        },
-        {
-          "text": "beta-1 adrenoceptor",
-          "type": "GENE",
-          "start": 222,
-          "end": 241,
-          "canonical_id": "gene:153",
-          "canonical_name": "ADRB1",
-          "confidence": 0.806
-        },
-        {
-          "text": "beta-2 adrenoceptor",
-          "type": "GENE",
-          "start": 317,
-          "end": 336,
-          "canonical_id": "gene:154",
-          "canonical_name": "ADRB2",
-          "confidence": 0.806
-        },
-        {
-          "text": "hypokalemia",
-          "type": "DISEASE",
-          "start": 488,
-          "end": 499,
-          "canonical_id": "doid:4500",
-          "canonical_name": "hypokalemia",
+          "text": "sparteine",
+          "type": "CHEMICAL",
+          "start": 227,
+          "end": 236,
+          "canonical_id": "chebi:28827",
+          "canonical_name": "sparteine",
           "confidence": 0.85
         }
       ],
       "relationships": [
         {
           "subject": "metoprolol",
-          "predicate": "associated_with",
-          "object": "debrisoquine",
-          "type": "associated_with",
-          "direction": "neutral",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": null,
-            "cell_type": null,
-            "experiment_type": "clinical"
-          }
-        },
-        {
-          "subject": "metoprolol",
-          "predicate": "associated_with",
-          "object": "sparteine",
-          "type": "associated_with",
-          "direction": "neutral",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": null,
-            "cell_type": null,
-            "experiment_type": "clinical"
-          }
-        },
-        {
-          "subject": "metoprolol",
-          "predicate": "inhibits",
+          "predicate": "",
           "object": "beta-1 adrenoceptor",
-          "type": "inhibits",
+          "type": "downregulates",
           "direction": "negative",
           "negated": false,
-          "confidence": 0.97,
+          "confidence": 1.0,
           "context": {
             "organism": null,
             "cell_type": null,
-            "experiment_type": "clinical"
+            "experiment_type": null
           }
         },
         {
           "subject": "metoprolol",
-          "predicate": "inhibits",
+          "predicate": "",
           "object": "beta-2 adrenoceptor",
-          "type": "inhibits",
+          "type": "downregulates",
           "direction": "negative",
           "negated": false,
-          "confidence": 0.97,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
-            "experiment_type": "clinical"
+            "experiment_type": null
           }
         },
         {
           "subject": "metoprolol",
-          "predicate": "downregulates",
+          "predicate": "",
           "object": "hypokalemia",
           "type": "downregulates",
           "direction": "negative",
           "negated": false,
-          "confidence": 0.97,
+          "confidence": 1.0,
           "context": {
             "organism": null,
             "cell_type": null,
-            "experiment_type": "clinical"
+            "experiment_type": null
           }
         },
         {
           "subject": "terbutaline",
-          "predicate": "causes",
+          "predicate": "",
           "object": "hypokalemia",
           "type": "upregulates",
           "direction": "positive",
           "negated": false,
-          "confidence": 0.97,
+          "confidence": 1.0,
           "context": {
             "organism": null,
             "cell_type": null,
-            "experiment_type": "clinical"
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "Debrisoquine",
+          "predicate": "",
+          "object": "metoprolol",
+          "type": "interacts_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "sparteine",
+          "predicate": "",
+          "object": "metoprolol",
+          "type": "interacts_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "PMs",
+          "predicate": "",
+          "object": "alpha-hydroxymetoprolol",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.7,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "potassium",
+          "predicate": "",
+          "object": "hypokalemia",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.7,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
           }
         }
       ],
@@ -1169,315 +1480,240 @@
     "predicted": {
       "entities": [
         {
-          "text": "N-(2-propylpentanoyl)urea",
-          "type": "CHEMICAL",
-          "start": 10,
-          "end": 34,
-          "canonical_id": "mesh:D001806",
-          "canonical_name": "Blood Urea Nitrogen",
-          "confidence": 0.51
-        },
-        {
-          "text": "VPU",
-          "type": "CHEMICAL",
-          "start": 0,
-          "end": 3,
-          "canonical_id": null,
-          "canonical_name": null,
-          "confidence": 0.95
-        },
-        {
-          "text": "glutamate",
-          "type": "CHEMICAL",
-          "start": 0,
-          "end": 9,
-          "canonical_id": "mesh:D018698",
-          "canonical_name": "Glutamic Acid",
-          "confidence": 0.95
-        },
-        {
-          "text": "aspartate",
-          "type": "CHEMICAL",
-          "start": 0,
-          "end": 9,
-          "canonical_id": "chebi:132943",
-          "canonical_name": "aspartate",
-          "confidence": 0.95
-        },
-        {
-          "text": "glycine",
-          "type": "CHEMICAL",
-          "start": 0,
-          "end": 7,
-          "canonical_id": "chebi:15428",
-          "canonical_name": "glycine",
-          "confidence": 0.95
-        },
-        {
-          "text": "GABA",
-          "type": "CHEMICAL",
-          "start": 0,
-          "end": 4,
-          "canonical_id": "mesh:D005680",
-          "canonical_name": "gamma-Aminobutyric Acid",
-          "confidence": 0.95
-        },
-        {
           "text": "valproic acid",
           "type": "CHEMICAL",
-          "start": 0,
-          "end": 13,
+          "start": 388,
+          "end": 401,
           "canonical_id": "chebi:39867",
           "canonical_name": "valproic acid",
           "confidence": 0.95
         },
         {
-          "text": "VPA",
+          "text": "valproic acid",
           "type": "CHEMICAL",
-          "start": 0,
-          "end": 3,
-          "canonical_id": null,
-          "canonical_name": null,
+          "start": 388,
+          "end": 401,
+          "canonical_id": "chebi:39867",
+          "canonical_name": "valproic acid",
           "confidence": 0.95
         },
         {
-          "text": "pilocarpine",
-          "type": "CHEMICAL",
+          "text": "Acute",
+          "type": "PHENOTYPE",
           "start": 0,
-          "end": 11,
-          "canonical_id": "chebi:39462",
-          "canonical_name": "pilocarpine",
+          "end": 5,
+          "canonical_id": "hp:0011009",
+          "canonical_name": "Acute",
+          "confidence": 0.95
+        },
+        {
+          "text": "neurotransmitters",
+          "type": "CHEMICAL",
+          "start": 69,
+          "end": 86,
+          "canonical_id": "mesh:D018377",
+          "canonical_name": "Neurotransmitter Agents",
+          "confidence": 0.95
+        },
+        {
+          "text": "seizure",
+          "type": "PHENOTYPE",
+          "start": 110,
+          "end": 117,
+          "canonical_id": "hp:0001250",
+          "canonical_name": "Seizure",
           "confidence": 0.95
         },
         {
           "text": "seizure",
           "type": "DISEASE",
-          "start": 0,
-          "end": 7,
+          "start": 110,
+          "end": 117,
           "canonical_id": "mesh:D012640",
           "canonical_name": "Seizures",
           "confidence": 0.95
+        },
+        {
+          "text": "rats",
+          "type": "ORGANISM",
+          "start": 121,
+          "end": 125,
+          "canonical_id": "taxon:10114",
+          "canonical_name": "Rattus",
+          "confidence": 0.95
+        },
+        {
+          "text": "rats",
+          "type": "ORGANISM",
+          "start": 121,
+          "end": 125,
+          "canonical_id": "taxon:10114",
+          "canonical_name": "Rattus",
+          "confidence": 0.95
+        },
+        {
+          "text": "rats",
+          "type": "ORGANISM",
+          "start": 121,
+          "end": 125,
+          "canonical_id": "taxon:10114",
+          "canonical_name": "Rattus",
+          "confidence": 0.95
+        },
+        {
+          "text": "rats",
+          "type": "ORGANISM",
+          "start": 121,
+          "end": 125,
+          "canonical_id": "taxon:10114",
+          "canonical_name": "Rattus",
+          "confidence": 0.95
+        },
+        {
+          "text": "anticonvulsant",
+          "type": "CHEMICAL",
+          "start": 170,
+          "end": 184,
+          "canonical_id": "chebi:35623",
+          "canonical_name": "anticonvulsant",
+          "confidence": 0.95
+        },
+        {
+          "text": "anticonvulsant",
+          "type": "CHEMICAL",
+          "start": 170,
+          "end": 184,
+          "canonical_id": "chebi:35623",
+          "canonical_name": "anticonvulsant",
+          "confidence": 0.95
+        },
+        {
+          "text": "GABA",
+          "type": "CHEMICAL",
+          "start": 309,
+          "end": 313,
+          "canonical_id": "mesh:D005680",
+          "canonical_name": "gamma-Aminobutyric Acid",
+          "confidence": 0.95
+        },
+        {
+          "text": "VPU",
+          "type": "GENE",
+          "start": 345,
+          "end": 348,
+          "canonical_id": "gene:6449",
+          "canonical_name": "SGTA",
+          "confidence": 0.95
+        },
+        {
+          "text": "microdialysis",
+          "type": "CHEMICAL",
+          "start": 615,
+          "end": 628,
+          "canonical_id": "mesh:D017551",
+          "canonical_name": "Microdialysis",
+          "confidence": 0.95
+        },
+        {
+          "text": "pilocarpine",
+          "type": "CHEMICAL",
+          "start": 90,
+          "end": 101,
+          "canonical_id": "chebi:39462",
+          "canonical_name": "pilocarpine",
+          "confidence": 0.95
+        },
+        {
+          "text": "pilocarpine",
+          "type": "CHEMICAL",
+          "start": 90,
+          "end": 101,
+          "canonical_id": "chebi:39462",
+          "canonical_name": "pilocarpine",
+          "confidence": 0.95
+        },
+        {
+          "text": "100",
+          "type": "CELL_TYPE",
+          "start": 880,
+          "end": 883,
+          "canonical_id": "cvcl:CVCL_D6F4",
+          "canonical_name": "Beta-LG MAb 100",
+          "confidence": 0.95
+        },
+        {
+          "text": "animals",
+          "type": "ORGANISM",
+          "start": 1236,
+          "end": 1243,
+          "canonical_id": "taxon:33208",
+          "canonical_name": "Metazoa",
+          "confidence": 0.95
+        },
+        {
+          "text": "animals",
+          "type": "ORGANISM",
+          "start": 1236,
+          "end": 1243,
+          "canonical_id": "taxon:33208",
+          "canonical_name": "Metazoa",
+          "confidence": 0.95
+        },
+        {
+          "text": "minor",
+          "type": "CHEMICAL",
+          "start": 1376,
+          "end": 1381,
+          "canonical_id": "mesh:D033242",
+          "canonical_name": "Minors",
+          "confidence": 0.95
+        },
+        {
+          "text": "minor",
+          "type": "GENE",
+          "start": 1376,
+          "end": 1381,
+          "canonical_id": "gene:8013",
+          "canonical_name": "NR4A3",
+          "confidence": 0.95
+        },
+        {
+          "text": "N-(2-propylpentanoyl)urea",
+          "type": "CHEMICAL",
+          "start": 17,
+          "end": 42,
+          "canonical_id": "mesh:D001806",
+          "canonical_name": "Blood Urea Nitrogen",
+          "confidence": 0.51
+        },
+        {
+          "text": "VPA",
+          "type": "CHEMICAL",
+          "start": 403,
+          "end": 406,
+          "canonical_id": null,
+          "canonical_name": null,
+          "confidence": 0.85
+        },
+        {
+          "text": "hippocampus",
+          "type": "CELL_TYPE",
+          "start": 0,
+          "end": 0,
+          "canonical_id": "mesh:D006624",
+          "canonical_name": "Hippocampus",
+          "confidence": 0.85
         }
       ],
       "relationships": [
         {
           "subject": "N-(2-propylpentanoyl)urea",
-          "predicate": "downregulates",
+          "predicate": "",
           "object": "seizure",
           "type": "downregulates",
           "direction": "negative",
           "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPU",
-          "predicate": "downregulates",
-          "object": "seizure",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPA",
-          "predicate": "downregulates",
-          "object": "seizure",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "valproic acid",
-          "predicate": "downregulates",
-          "object": "seizure",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.75,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "pilocarpine",
-          "predicate": "causes",
-          "object": "seizure",
-          "type": "causes",
-          "direction": "positive",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "pilocarpine",
-          "predicate": "upregulates",
-          "object": "glutamate",
-          "type": "upregulates",
-          "direction": "positive",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "pilocarpine",
-          "predicate": "upregulates",
-          "object": "aspartate",
-          "type": "upregulates",
-          "direction": "positive",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPU",
-          "predicate": "downregulates",
-          "object": "glutamate",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPU",
-          "predicate": "downregulates",
-          "object": "aspartate",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPA",
-          "predicate": "downregulates",
-          "object": "glutamate",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPA",
-          "predicate": "downregulates",
-          "object": "aspartate",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.97,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPU",
-          "predicate": "downregulates",
-          "object": "GABA",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPU",
-          "predicate": "downregulates",
-          "object": "glycine",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPA",
-          "predicate": "downregulates",
-          "object": "GABA",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "VPA",
-          "predicate": "downregulates",
-          "object": "glycine",
-          "type": "downregulates",
-          "direction": "negative",
-          "negated": false,
-          "confidence": 0.9,
-          "context": {
-            "organism": "rat",
-            "cell_type": null,
-            "experiment_type": "in_vivo"
-          }
-        },
-        {
-          "subject": "N-(2-propylpentanoyl)urea",
-          "predicate": "associated_with",
-          "object": "VPU",
-          "type": "associated_with",
-          "direction": "neutral",
-          "negated": false,
-          "confidence": 0.75,
+          "confidence": 1.0,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -1485,13 +1721,97 @@
           }
         },
         {
-          "subject": "VPU",
-          "predicate": "associated_with",
-          "object": "valproic acid",
-          "type": "associated_with",
+          "subject": "valproic acid",
+          "predicate": "",
+          "object": "seizure",
+          "type": "downregulates",
+          "direction": "negative",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "N-(2-propylpentanoyl)urea",
+          "predicate": "",
+          "object": "neurotransmitters",
+          "type": "regulates",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.9,
+          "confidence": 1.0,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "valproic acid",
+          "predicate": "",
+          "object": "neurotransmitters",
+          "type": "regulates",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "pilocarpine",
+          "predicate": "",
+          "object": "seizure",
+          "type": "upregulates",
+          "direction": "positive",
+          "negated": false,
+          "confidence": 1.0,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "N-(2-propylpentanoyl)urea",
+          "predicate": "",
+          "object": "GABA",
+          "type": "downregulates",
+          "direction": "negative",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "valproic acid",
+          "predicate": "",
+          "object": "GABA",
+          "type": "downregulates",
+          "direction": "negative",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "N-(2-propylpentanoyl)urea",
+          "predicate": "",
+          "object": "VPA",
+          "type": "interacts_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -1654,82 +1974,235 @@
     "predicted": {
       "entities": [
         {
+          "text": "autosomal dominant polycystic kidney disease",
+          "type": "DISEASE",
+          "start": 87,
+          "end": 131,
+          "canonical_id": "doid:898",
+          "canonical_name": "autosomal dominant polycystic kidney disease",
+          "confidence": 0.95
+        },
+        {
+          "text": "denaturing gradient gel electrophoresis",
+          "type": "CHEMICAL",
+          "start": 415,
+          "end": 454,
+          "canonical_id": "mesh:D058645",
+          "canonical_name": "Denaturing Gradient Gel Electrophoresis",
+          "confidence": 0.95
+        },
+        {
+          "text": "healthy subjects",
+          "type": "CHEMICAL",
+          "start": 865,
+          "end": 881,
+          "canonical_id": "mesh:D064368",
+          "canonical_name": "Healthy Volunteers",
+          "confidence": 0.95
+        },
+        {
+          "text": "Real-time PCR",
+          "type": "CHEMICAL",
+          "start": 967,
+          "end": 980,
+          "canonical_id": "mesh:D060888",
+          "canonical_name": "Real-Time Polymerase Chain Reaction",
+          "confidence": 0.95
+        },
+        {
           "text": "PKD1",
           "type": "GENE",
-          "start": 18,
-          "end": 22,
+          "start": 20,
+          "end": 24,
           "canonical_id": "gene:5310",
           "canonical_name": "PKD1",
           "confidence": 0.95
         },
         {
+          "text": "PKD1",
+          "type": "DISEASE",
+          "start": 20,
+          "end": 24,
+          "canonical_id": "doid:0110858",
+          "canonical_name": "polycystic kidney disease 1",
+          "confidence": 0.95
+        },
+        {
           "text": "PKD2",
           "type": "GENE",
-          "start": 46,
-          "end": 50,
+          "start": 49,
+          "end": 53,
           "canonical_id": "gene:5311",
           "canonical_name": "PKD2",
           "confidence": 0.95
         },
         {
-          "text": "autosomal dominant polycystic kidney disease",
+          "text": "PKD2",
           "type": "DISEASE",
-          "start": 101,
-          "end": 145,
-          "canonical_id": "doid:898",
-          "canonical_name": "autosomal dominant polycystic kidney disease",
+          "start": 49,
+          "end": 53,
+          "canonical_id": "doid:0110859",
+          "canonical_name": "polycystic kidney disease 2",
+          "confidence": 0.95
+        },
+        {
+          "text": "PKD2",
+          "type": "GENE",
+          "start": 49,
+          "end": 53,
+          "canonical_id": "gene:5311",
+          "canonical_name": "PKD2",
+          "confidence": 0.95
+        },
+        {
+          "text": "polycystins",
+          "type": "CHEMICAL",
+          "start": 231,
+          "end": 242,
+          "canonical_id": "mesh:D050396",
+          "canonical_name": "TRPP Cation Channels",
           "confidence": 0.95
         },
         {
           "text": "ADPKD",
           "type": "DISEASE",
-          "start": 147,
-          "end": 152,
+          "start": 191,
+          "end": 196,
           "canonical_id": "doid:898",
           "canonical_name": "autosomal dominant polycystic kidney disease",
           "confidence": 0.95
         },
         {
-          "text": "polycystins 1",
+          "text": "find",
           "type": "GENE",
-          "start": 175,
-          "end": 188,
-          "canonical_id": "mesh:D050396",
-          "canonical_name": "TRPP Cation Channels",
-          "confidence": 0.896
+          "start": 808,
+          "end": 812,
+          "canonical_id": "gene:81501",
+          "canonical_name": "DCSTAMP",
+          "confidence": 0.95
+        },
+        {
+          "text": "peripheral",
+          "type": "PHENOTYPE",
+          "start": 1131,
+          "end": 1141,
+          "canonical_id": "hp:0030646",
+          "canonical_name": "Peripheral",
+          "confidence": 0.95
+        },
+        {
+          "text": "daughter",
+          "type": "PHENOTYPE",
+          "start": 1208,
+          "end": 1216,
+          "canonical_id": "mesh:D009679",
+          "canonical_name": "Nuclear Family",
+          "confidence": 0.95
+        },
+        {
+          "text": "collecting",
+          "type": "PHENOTYPE",
+          "start": 1323,
+          "end": 1333,
+          "canonical_id": "hp:0030212",
+          "canonical_name": "Collectionism",
+          "confidence": 0.95
+        },
+        {
+          "text": "mouse",
+          "type": "CELL_TYPE",
+          "start": 1385,
+          "end": 1390,
+          "canonical_id": "cvcl:CVCL_ZE35",
+          "canonical_name": "CRL-6440",
+          "confidence": 0.95
+        },
+        {
+          "text": "mouse",
+          "type": "ORGANISM",
+          "start": 1385,
+          "end": 1390,
+          "canonical_id": "taxon:10088",
+          "canonical_name": "Mus",
+          "confidence": 0.95
+        },
+        {
+          "text": "mouse",
+          "type": "ORGANISM",
+          "start": 1385,
+          "end": 1390,
+          "canonical_id": "taxon:10088",
+          "canonical_name": "Mus",
+          "confidence": 0.95
+        },
+        {
+          "text": "mouse",
+          "type": "ORGANISM",
+          "start": 1385,
+          "end": 1390,
+          "canonical_id": "taxon:10088",
+          "canonical_name": "Mus",
+          "confidence": 0.95
+        },
+        {
+          "text": "diffuse",
+          "type": "PHENOTYPE",
+          "start": 1424,
+          "end": 1431,
+          "canonical_id": "hp:0020034",
+          "canonical_name": "Diffuse",
+          "confidence": 0.95
+        },
+        {
+          "text": "report",
+          "type": "CHEMICAL",
+          "start": 1659,
+          "end": 1665,
+          "canonical_id": "mesh:D058028",
+          "canonical_name": "Research Report",
+          "confidence": 0.95
+        },
+        {
+          "text": "p.F482C",
+          "type": "VARIANT",
+          "start": 718,
+          "end": 725,
+          "canonical_id": null,
+          "canonical_name": null,
+          "confidence": 0.95
         },
         {
           "text": "PC1",
           "type": "GENE",
-          "start": 190,
-          "end": 193,
+          "start": 246,
+          "end": 249,
           "canonical_id": "gene:3868",
           "canonical_name": "KRT16",
-          "confidence": 0.95
-        },
-        {
-          "text": "polycystins 2",
-          "type": "GENE",
-          "start": 199,
-          "end": 202,
-          "canonical_id": "mesh:D050396",
-          "canonical_name": "TRPP Cation Channels",
-          "confidence": 0.896
+          "confidence": 0.85
         },
         {
           "text": "PC2",
           "type": "GENE",
-          "start": 203,
-          "end": 206,
+          "start": 258,
+          "end": 261,
           "canonical_id": "gene:3854",
           "canonical_name": "KRT6B",
-          "confidence": 0.95
+          "confidence": 0.85
+        },
+        {
+          "text": "polycystin-2",
+          "type": "GENE",
+          "start": 1595,
+          "end": 1607,
+          "canonical_id": "mesh:D050396",
+          "canonical_name": "TRPP Cation Channels",
+          "confidence": 0.85
         },
         {
           "text": "renal diseases",
           "type": "DISEASE",
-          "start": 236,
-          "end": 250,
+          "start": 302,
+          "end": 316,
           "canonical_id": "mesh:D052177",
           "canonical_name": "Kidney Diseases, Cystic",
           "confidence": 0.817
@@ -1737,53 +2210,35 @@
         {
           "text": "c.1445T > G",
           "type": "VARIANT",
-          "start": 371,
-          "end": 382,
+          "start": 559,
+          "end": 570,
           "canonical_id": null,
           "canonical_name": null,
-          "confidence": 0.95
-        },
-        {
-          "text": "p.F482C",
-          "type": "VARIANT",
-          "start": 487,
-          "end": 494,
-          "canonical_id": null,
-          "canonical_name": null,
-          "confidence": 0.95
+          "confidence": 0.85
         },
         {
           "text": "IVS21-2delAG",
           "type": "VARIANT",
-          "start": 551,
-          "end": 563,
+          "start": 783,
+          "end": 795,
           "canonical_id": null,
           "canonical_name": null,
-          "confidence": 0.95
-        },
-        {
-          "text": "polycystin-2",
-          "type": "GENE",
-          "start": 1063,
-          "end": 1075,
-          "canonical_id": "mesh:D050396",
-          "canonical_name": "TRPP Cation Channels",
-          "confidence": 0.95
+          "confidence": 0.85
         },
         {
           "text": "peripheral blood mononuclear cells",
           "type": "CELL_TYPE",
-          "start": 762,
-          "end": 796,
+          "start": 1131,
+          "end": 1165,
           "canonical_id": "mesh:D007963",
           "canonical_name": "Leukocytes, Mononuclear",
-          "confidence": 0.95
+          "confidence": 0.85
         },
         {
           "text": "PBMCs",
           "type": "CELL_TYPE",
-          "start": 798,
-          "end": 803,
+          "start": 1167,
+          "end": 1172,
           "canonical_id": "cvcl:CVCL_WR41",
           "canonical_name": "PBMC iPSC #1",
           "confidence": 0.567
@@ -1791,17 +2246,17 @@
         {
           "text": "Inner medullar collecting duct",
           "type": "CELL_TYPE",
-          "start": 888,
-          "end": 918,
+          "start": 1308,
+          "end": 1338,
           "canonical_id": null,
           "canonical_name": null,
-          "confidence": 0.95
+          "confidence": 0.85
         },
         {
           "text": "IMCD",
           "type": "CELL_TYPE",
-          "start": 920,
-          "end": 924,
+          "start": 1340,
+          "end": 1344,
           "canonical_id": "cvcl:CVCL_0429",
           "canonical_name": "mIMCD-3",
           "confidence": 0.85
@@ -1810,40 +2265,40 @@
       "relationships": [
         {
           "subject": "PKD1",
-          "predicate": "associated_with",
+          "predicate": "",
           "object": "autosomal dominant polycystic kidney disease",
           "type": "associated_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.9,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
-            "experiment_type": "clinical"
+            "experiment_type": null
           }
         },
         {
           "subject": "PKD2",
-          "predicate": "associated_with",
+          "predicate": "",
           "object": "autosomal dominant polycystic kidney disease",
           "type": "associated_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.9,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
-            "experiment_type": "clinical"
+            "experiment_type": null
           }
         },
         {
           "subject": "PC1",
-          "predicate": "associated_with",
+          "predicate": "",
           "object": "autosomal dominant polycystic kidney disease",
-          "type": "associated_with",
-          "direction": "neutral",
+          "type": "upregulates",
+          "direction": "positive",
           "negated": false,
-          "confidence": 0.97,
+          "confidence": 1.0,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -1852,12 +2307,40 @@
         },
         {
           "subject": "PC2",
-          "predicate": "associated_with",
+          "predicate": "",
           "object": "autosomal dominant polycystic kidney disease",
+          "type": "upregulates",
+          "direction": "positive",
+          "negated": false,
+          "confidence": 1.0,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "autosomal dominant polycystic kidney disease",
+          "predicate": "",
+          "object": "renal diseases",
           "type": "associated_with",
           "direction": "neutral",
           "negated": false,
-          "confidence": 0.97,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "c.1445T > G",
+          "predicate": "",
+          "object": "p.F482C",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.95,
           "context": {
             "organism": null,
             "cell_type": null,
@@ -1866,44 +2349,86 @@
         },
         {
           "subject": "p.F482C",
-          "predicate": "associated_with",
-          "object": "autosomal dominant polycystic kidney disease",
-          "type": "associated_with",
-          "direction": "neutral",
+          "predicate": "",
+          "object": "polycystin-2",
+          "type": "downregulates",
+          "direction": "negative",
           "negated": false,
-          "confidence": 0.75,
+          "confidence": 1.0,
           "context": {
             "organism": null,
             "cell_type": null,
-            "experiment_type": "clinical"
-          }
-        },
-        {
-          "subject": "IVS21-2delAG",
-          "predicate": "associated_with",
-          "object": "autosomal dominant polycystic kidney disease",
-          "type": "associated_with",
-          "direction": "neutral",
-          "negated": false,
-          "confidence": 0.75,
-          "context": {
-            "organism": null,
-            "cell_type": null,
-            "experiment_type": "clinical"
+            "experiment_type": null
           }
         },
         {
           "subject": "p.F482C",
-          "predicate": "inhibits",
-          "object": "polycystins 1",
-          "type": "inhibits",
-          "direction": "negative",
+          "predicate": "",
+          "object": "autosomal dominant polycystic kidney disease",
+          "type": "associated_with",
+          "direction": "neutral",
           "negated": false,
-          "confidence": 0.97,
+          "confidence": 0.95,
           "context": {
             "organism": null,
-            "cell_type": "PBMCs",
-            "experiment_type": "in_vitro"
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "IVS21-2delAG",
+          "predicate": "",
+          "object": "PKD1",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "IVS21-2delAG",
+          "predicate": "",
+          "object": "autosomal dominant polycystic kidney disease",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.95,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "PKD2",
+          "predicate": "",
+          "object": "peripheral blood mononuclear cells",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.75,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
+          }
+        },
+        {
+          "subject": "polycystin-2",
+          "predicate": "",
+          "object": "PBMCs",
+          "type": "associated_with",
+          "direction": "neutral",
+          "negated": false,
+          "confidence": 0.75,
+          "context": {
+            "organism": null,
+            "cell_type": null,
+            "experiment_type": null
           }
         }
       ],

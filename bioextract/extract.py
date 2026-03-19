@@ -4,7 +4,6 @@ Coordinates: model inference → dictionary matching → normalization → struc
 Falls back to Claude teacher if no student model is available.
 """
 
-import json
 import logging
 import os
 import re
@@ -16,7 +15,6 @@ from .schema import (
     RelationshipContext,
 )
 from .model.inference import extract_with_student, is_model_available
-from .model.teacher_prompt import build_extraction_prompt, parse_teacher_output
 from .model.ensemble import extract_ensemble
 from .dictionaries.lookup import DictionaryLookup
 from .normalize import EntityNormalizer
@@ -279,7 +277,11 @@ class BioExtractor:
         return [self.extract(text) for text in texts]
 
     def _extract_with_teacher(self, text: str) -> ExtractionResult | None:
-        """Use Claude API as a teacher model for extraction."""
+        """Use Claude API as a teacher model for extraction.
+
+        Runs the ensemble pipeline with n_runs=1 (single Sonnet call for
+        relationships) as a lightweight fallback when no student model exists.
+        """
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             logger.warning(
@@ -289,124 +291,15 @@ class BioExtractor:
             return None
 
         try:
-            import httpx
-        except ImportError:
-            logger.error("httpx required for Claude teacher extraction")
-            return None
-
-        # Get dictionary hints for known entities
-        known_entities = None
-        if self._dictionary.is_available():
-            known_entities = self._get_dictionary_hints(text)
-
-        messages = build_extraction_prompt(text, known_entities)
-
-        import time as _time
-
-        model = os.environ.get("BIOEXTRACT_MODEL", "claude-sonnet-4-6")
-        max_retries = 3
-
-        try:
-            with httpx.Client(timeout=60) as client:
-                for attempt in range(max_retries):
-                    resp = client.post(
-                        "https://api.anthropic.com/v1/messages",
-                        headers={
-                            "x-api-key": api_key,
-                            "anthropic-version": "2023-06-01",
-                            "content-type": "application/json",
-                        },
-                        json={
-                            "model": model,
-                            "max_tokens": 8192,
-                            "system": messages[0]["content"],
-                            "messages": [messages[1]],
-                        },
-                    )
-                    if resp.status_code == 429:
-                        wait = 15 * (attempt + 1)
-                        print(f"(rate limited, waiting {wait}s)", end=" ", flush=True)
-                        _time.sleep(wait)
-                        continue
-                    break
-
-                if resp.status_code != 200:
-                    error_body = resp.text[:500]
-                    logger.error("Claude API error %d: %s", resp.status_code, error_body)
-                    print(f"Claude API error {resp.status_code}: {error_body}", flush=True)
-                    return None
-                data = resp.json()
-                response_text = data["content"][0]["text"]
+            return extract_ensemble(
+                text,
+                dictionary=self._dictionary,
+                normalizer=self._normalizer,
+                n_runs=1,
+            )
         except Exception as e:
-            logger.error("Claude teacher API call failed: %s", e)
-            print(f"Claude API call failed: {e}", flush=True)
+            logger.error("Teacher extraction failed: %s", e)
             return None
-
-        parsed = parse_teacher_output(response_text)
-        if "parse_error" in parsed:
-            logger.warning("Failed to parse teacher output: %s", parsed["parse_error"])
-            return ExtractionResult(text=text)
-
-        return self._convert_teacher_output(text, parsed)
-
-    def _get_dictionary_hints(self, text: str, max_hints: int = 20) -> list[dict]:
-        """Find potential entity matches in text using dictionary lookup."""
-        hints = []
-        # Simple approach: try each capitalized word/phrase
-        words = set()
-        for word in text.split():
-            cleaned = word.strip(".,;:()[]")
-            if cleaned and (cleaned[0].isupper() or len(cleaned) <= 5):
-                words.add(cleaned)
-
-        for word in list(words)[:50]:  # Limit lookups
-            matches = self._dictionary.exact_match(word)
-            for m in matches[:2]:
-                hints.append({
-                    "name": m.name,
-                    "type": m.entity_type,
-                    "canonical_id": m.canonical_id,
-                })
-                if len(hints) >= max_hints:
-                    return hints
-        return hints
-
-    def _convert_teacher_output(self, text: str, parsed: dict) -> ExtractionResult:
-        """Convert parsed teacher JSON to ExtractionResult."""
-        entities = []
-        for e in parsed.get("entities", []):
-            entities.append(ExtractedEntity(
-                text=e["text"],
-                type=e["type"],
-                start=e.get("start", 0),
-                end=e.get("end", 0),
-                confidence=0.85,  # teacher baseline
-            ))
-
-        relationships = []
-        for r in parsed.get("relationships", []):
-            ctx = r.get("context", {})
-            relationships.append(ExtractedRelationship(
-                subject=r["subject"],
-                predicate=r.get("predicate", ""),
-                object=r["object"],
-                type=r["type"],
-                direction=r.get("direction", "neutral"),
-                negated=r.get("negated", False),
-                context=RelationshipContext(
-                    organism=ctx.get("organism"),
-                    cell_type=ctx.get("cell_type"),
-                    experiment_type=ctx.get("experiment_type"),
-                ),
-                confidence=0.85,
-            ))
-
-        return ExtractionResult(
-            text=text,
-            entities=entities,
-            relationships=relationships,
-            extraction_method="llm_claude" if self._use_teacher else "bioextract_v1",
-        )
 
     def _filter_bad_entities(self, result: ExtractionResult) -> ExtractionResult:
         """Remove entities that are known to be problematic.

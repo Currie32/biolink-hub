@@ -1,20 +1,21 @@
 """Progressive student model training harness.
 
-Compares two approaches at progressive scales (1, 10, 100, 400 examples):
-  - Approach A: Single generative model (Flan-T5-base, seq2seq with LoRA)
-  - Approach B: Split pipeline (PubMedBERT NER + Flan-T5-base RE with LoRA)
+Trains the split pipeline (BioLinkBERT-large NER + BioLinkBERT-large RE pair classifier)
+at progressive scales (1, 10, 100, 400 examples) to measure learning curves.
+
+NER uses BIOES tagging with sliding window for full abstract coverage.
+RE uses typed entity markers with dual classification heads.
 
 Designed to run on Google Colab (T4 GPU). See notebooks/train_progressive.ipynb.
 
 Usage (Colab):
     from bioextract.model.train_progressive import run_progressive
-    results = run_progressive(scales=[1, 10], approaches=["A", "B"])
+    results = run_progressive(scales=[1, 10])
 """
 
 from __future__ import annotations
 
 import json
-import sys
 import time
 from pathlib import Path
 
@@ -60,73 +61,12 @@ def filter_to_gold_labels(examples: list[dict]) -> list[dict]:
     return filtered
 
 
-def _format_seq2seq_output(example: dict) -> str:
-    """Format gold output for Approach A using pipe-delimited format.
+def recover_spans(text: str, entities: list[dict]) -> list[dict]:
+    """Recover start/end character offsets via string matching.
 
-    T5's tokenizer doesn't have curly braces in its vocabulary (they become <unk>),
-    so we use a linearized format instead of JSON:
-        entities: autotaxin | GENE ; LPA2 | GENE
-        relationships: autotaxin | LPA2 | associated_with | neutral
+    For entities without spans (e.g., from LLM output), find them in the
+    original text using case-insensitive search.
     """
-    parts = []
-
-    entity_strs = []
-    for e in example.get("entities", []):
-        entity_strs.append(f"{e['text']} | {e['type']}")
-    parts.append("entities: " + " ; ".join(entity_strs) if entity_strs else "entities: none")
-
-    rel_strs = []
-    for r in example.get("relationships", []):
-        direction = r.get("direction", "neutral")
-        rel_strs.append(f"{r['subject']} | {r['object']} | {r['type']} | {direction}")
-    parts.append("relationships: " + " ; ".join(rel_strs) if rel_strs else "relationships: none")
-
-    return " | ".join(parts)
-
-
-def _parse_seq2seq_output(text: str) -> dict | None:
-    """Parse the pipe-delimited output format back into entities and relationships."""
-    try:
-        result = {"entities": [], "relationships": []}
-
-        # Split into entities and relationships sections
-        if "relationships:" not in text:
-            return None
-
-        ent_part, rel_part = text.split("relationships:", 1)
-        ent_part = ent_part.replace("entities:", "").strip().rstrip("|").strip()
-        rel_part = rel_part.strip()
-
-        # Parse entities
-        if ent_part and ent_part != "none":
-            for ent_str in ent_part.split(";"):
-                ent_str = ent_str.strip()
-                if "|" in ent_str:
-                    parts = [p.strip() for p in ent_str.split("|")]
-                    if len(parts) >= 2:
-                        result["entities"].append({"text": parts[0], "type": parts[1]})
-
-        # Parse relationships
-        if rel_part and rel_part != "none":
-            for rel_str in rel_part.split(";"):
-                rel_str = rel_str.strip()
-                if "|" in rel_str:
-                    parts = [p.strip() for p in rel_str.split("|")]
-                    if len(parts) >= 3:
-                        result["relationships"].append({
-                            "subject": parts[0],
-                            "object": parts[1],
-                            "type": parts[2],
-                            "direction": parts[3] if len(parts) >= 4 else "neutral",
-                        })
-
-        return result
-    except Exception:
-        return None
-
-
-def _recover_spans(text: str, entities: list[dict]) -> list[dict]:
-    """Post-process Approach A output: recover start/end via string matching."""
     result = []
     for ent in entities:
         ent_text = ent.get("text", "")
@@ -148,170 +88,14 @@ def _recover_spans(text: str, entities: list[dict]) -> list[dict]:
     return result
 
 
-def train_approach_a(subset: list[dict], output_dir: str, epochs: int):
-    """Train Approach A: Single Flan-T5-base generative model with LoRA."""
-    from transformers import (
-        AutoModelForSeq2SeqLM,
-        AutoTokenizer,
-        DataCollatorForSeq2Seq,
-        Seq2SeqTrainer,
-        Seq2SeqTrainingArguments,
-    )
-    from datasets import Dataset
-    from peft import LoraConfig, get_peft_model, TaskType
-
-    import torch
-    device_is_gpu = torch.cuda.is_available()
-    batch_size = 4 if device_is_gpu else min(4, max(1, len(subset)))
-
-    _log(f"[Approach A] Loading Flan-T5-base model... (gpu={device_is_gpu})")
-    tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
-    model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-base")
-
-    lora_config = LoraConfig(
-        task_type=TaskType.SEQ_2_SEQ_LM,
-        r=16,
-        lora_alpha=32,
-        lora_dropout=0.1,
-        target_modules=["q", "v"],
-    )
-    model = get_peft_model(model, lora_config)
-
-    # Format data
-    formatted = []
-    for ex in subset:
-        input_text = f"extract entities and relationships: {ex['text']}"
-        output_text = _format_seq2seq_output(ex)
-        formatted.append({"input": input_text, "output": output_text})
-
-    # Train/eval split
-    if len(formatted) > 2:
-        split_idx = max(1, int(len(formatted) * 0.9))
-        train_data = formatted[:split_idx]
-        eval_data = formatted[split_idx:]
-    else:
-        train_data = formatted
-        eval_data = None
-
-    def tokenize(batch):
-        inputs = tokenizer(
-            batch["input"], max_length=512, truncation=True, padding="max_length",
-        )
-        targets = tokenizer(
-            batch["output"], max_length=512, truncation=True,
-        )
-        inputs["labels"] = targets["input_ids"]
-        return inputs
-
-    train_ds = Dataset.from_list(train_data).map(
-        tokenize, batched=True, remove_columns=["input", "output"]
-    )
-
-    # Debug: inspect labels and verify loss is non-zero
-    sample_labels = train_ds[0]["labels"]
-    _log(f"  [DEBUG] Label length: {len(sample_labels)}")
-    _log(f"  [DEBUG] First 20 label tokens: {sample_labels[:20]}")
-    _log(f"  [DEBUG] Decoded output preview: {tokenizer.decode(sample_labels)[:200]}")
-
-    # Manual loss check before training
-    device = "cuda" if device_is_gpu else "cpu"
-    model.to(device)
-    sample = train_ds[0]
-    test_input = torch.tensor([sample["input_ids"]], device=device)
-    test_mask = torch.tensor([sample["attention_mask"]], device=device)
-    test_labels = torch.tensor([sample["labels"]], device=device)
-    with torch.no_grad():
-        out = model(input_ids=test_input, attention_mask=test_mask, labels=test_labels)
-    _log(f"  [DEBUG] Manual forward pass loss: {out.loss.item():.6f}")
-    eval_ds = None
-    if eval_data:
-        eval_ds = Dataset.from_list(eval_data).map(
-            tokenize, batched=True, remove_columns=["input", "output"]
-        )
-
-    training_args = Seq2SeqTrainingArguments(
-        output_dir=output_dir,
-        num_train_epochs=epochs,
-        per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
-        learning_rate=3e-4,
-        weight_decay=0.01,
-        eval_strategy="epoch" if eval_ds else "no",
-        save_strategy="no",
-        predict_with_generate=True,
-        generation_max_length=1024,
-        logging_steps=max(1, len(train_ds) // batch_size // 5),
-        fp16=device_is_gpu,
-        report_to="none",
-    )
-
-    trainer = Seq2SeqTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_ds,
-        eval_dataset=eval_ds,
-        processing_class=tokenizer,
-        data_collator=DataCollatorForSeq2Seq(tokenizer, model=model),
-    )
-
-    _log(f"[Approach A] Starting training: {len(train_data)} train examples, {epochs} epochs...")
-    trainer.train()
-    _log(f"[Approach A] Training complete. Saving model to {output_dir}")
-    trainer.save_model(output_dir)
-    tokenizer.save_pretrained(output_dir)
-
-
-def evaluate_approach_a(model_dir: str, test_data: list[dict]) -> dict:
-    """Evaluate Approach A on test data."""
-    import torch
-    from transformers import AutoTokenizer
-    from peft import AutoPeftModelForSeq2SeqLM
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    _log(f"[Approach A] Loading model for evaluation (device={device})...")
-    tokenizer = AutoTokenizer.from_pretrained(model_dir)
-    try:
-        model = AutoPeftModelForSeq2SeqLM.from_pretrained(model_dir)
-    except Exception:
-        from transformers import AutoModelForSeq2SeqLM
-        model = AutoModelForSeq2SeqLM.from_pretrained(model_dir)
-    model.to(device).eval()
-
-    n_total = len(test_data)
-    _log(f"[Approach A] Evaluating on {n_total} test examples...")
-    predictions = []
-    parse_failures = 0
-    for i, ex in enumerate(test_data):
-        if (i + 1) % 10 == 0 or i == 0:
-            _log(f"  Approach A eval: {i + 1}/{n_total}")
-        prompt = f"extract entities and relationships: {ex['text']}"
-        inputs = tokenizer(prompt, max_length=512, truncation=True, return_tensors="pt")
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-
-        with torch.no_grad():
-            outputs = model.generate(**inputs, max_new_tokens=256, num_beams=1)
-        decoded = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-        data = _parse_seq2seq_output(decoded)
-        if data is not None:
-            data["entities"] = _recover_spans(ex["text"], data.get("entities", []))
-            predictions.append(data)
-        else:
-            parse_failures += 1
-            predictions.append(None)
-
-    _log(f"  Approach A eval done. Parse failures: {parse_failures}/{n_total}")
-    return compute_metrics(predictions, test_data)
-
-
-def train_and_evaluate_approach_b(
+def train_and_evaluate(
     subset: list[dict],
     test_data: list[dict],
     ner_dir: str,
     re_dir: str,
     epochs: int,
 ) -> dict:
-    """Train and evaluate Approach B: NER + RE split pipeline.
+    """Train and evaluate the split pipeline (NER + RE).
 
     Returns dict with end_to_end metrics, ner_only metrics, and re_with_gold metrics.
     """
@@ -319,30 +103,30 @@ def train_and_evaluate_approach_b(
     from .train_re import train_re, predict_relationships, load_re_model
 
     # Stage 1: Train NER
-    _log(f"[Approach B] Stage 1: Training NER ({len(subset)} examples, {epochs} epochs)...")
+    _log(f"  Stage 1: Training NER ({len(subset)} examples, {epochs} epochs)...")
     train_ner(subset, ner_dir, epochs=epochs)
-    _log(f"[Approach B] NER training complete.")
+    _log(f"  NER training complete.")
 
     # Stage 2: Train RE (with gold entities)
-    _log(f"[Approach B] Stage 2: Training RE ({len(subset)} examples, {epochs} epochs)...")
+    _log(f"  Stage 2: Training RE ({len(subset)} examples, {epochs} epochs)...")
     train_re(subset, re_dir, epochs=epochs)
-    _log(f"[Approach B] RE training complete.")
+    _log(f"  RE training complete.")
 
     # --- Evaluation (load models once) ---
 
-    _log(f"[Approach B] Loading NER model for evaluation...")
+    _log(f"  Loading NER model for evaluation...")
     ner_model, ner_tokenizer = load_ner_model(ner_dir)
-    _log(f"[Approach B] Loading RE model for evaluation...")
+    _log(f"  Loading RE model for evaluation...")
     re_model, re_tokenizer = load_re_model(re_dir)
 
     n_total = len(test_data)
 
     # NER-only evaluation
-    _log(f"[Approach B] Evaluating NER on {n_total} test examples...")
+    _log(f"  Evaluating NER on {n_total} test examples...")
     ner_predictions = []
     for i, ex in enumerate(test_data):
         if (i + 1) % 10 == 0 or i == 0:
-            _log(f"  NER eval: {i + 1}/{n_total}")
+            _log(f"    NER eval: {i + 1}/{n_total}")
         pred_entities = predict_entities(ex["text"], model=ner_model, tokenizer=ner_tokenizer)
         ner_predictions.append(pred_entities)
 
@@ -351,11 +135,11 @@ def train_and_evaluate_approach_b(
     _log(f"  NER eval done. Entity F1: {ner_metrics['entity_f1']:.4f}")
 
     # RE with gold entities (diagnostic)
-    _log(f"[Approach B] Evaluating RE (gold entities) on {n_total} test examples...")
+    _log(f"  Evaluating RE (gold entities) on {n_total} test examples...")
     re_gold_predictions = []
     for i, ex in enumerate(test_data):
         if (i + 1) % 10 == 0 or i == 0:
-            _log(f"  RE (gold entities) eval: {i + 1}/{n_total}")
+            _log(f"    RE (gold entities) eval: {i + 1}/{n_total}")
         pred_rels = predict_relationships(ex["text"], ex.get("entities", []),
                                           model=re_model, tokenizer=re_tokenizer)
         re_gold_predictions.append({"entities": ex.get("entities", []), "relationships": pred_rels})
@@ -364,11 +148,11 @@ def train_and_evaluate_approach_b(
     _log(f"  RE (gold entities) eval done. Rel F1: {re_gold_metrics['relationship_f1']:.4f}")
 
     # End-to-end evaluation (NER errors propagate to RE)
-    _log(f"[Approach B] Evaluating end-to-end pipeline on {n_total} test examples...")
+    _log(f"  Evaluating end-to-end pipeline on {n_total} test examples...")
     e2e_predictions = []
     for i, (ex, pred_entities) in enumerate(zip(test_data, ner_predictions)):
         if (i + 1) % 10 == 0 or i == 0:
-            _log(f"  E2E eval: {i + 1}/{n_total}")
+            _log(f"    E2E eval: {i + 1}/{n_total}")
         pred_rels = predict_relationships(ex["text"], pred_entities,
                                           model=re_model, tokenizer=re_tokenizer)
         e2e_predictions.append({"entities": pred_entities, "relationships": pred_rels})
@@ -385,22 +169,22 @@ def train_and_evaluate_approach_b(
 
 def run_progressive(
     scales: list[int] | None = None,
-    approaches: list[str] | None = None,
     train_path: str | None = None,
     test_path: str | None = None,
     models_dir: str | None = None,
 ):
     """Run the full progressive training experiment.
 
+    Trains the split pipeline (BioLinkBERT-large NER + RE pair classifier) at each
+    scale and evaluates on the test set.
+
     Args:
         scales: List of training sizes to evaluate (default: [1, 10, 100, 400]).
-        approaches: Which approaches to run: ["A"], ["B"], or ["A", "B"] (default: both).
         train_path: Path to training JSONL.
         test_path: Path to test JSONL.
         models_dir: Base directory for saving models.
     """
     scales = scales or list(SCALES.keys())
-    approaches = approaches or ["A", "B"]
     train_path = train_path or str(TRAIN_PATH)
     test_path = test_path or str(TEST_PATH)
     models_dir = Path(models_dir or MODELS_DIR)
@@ -427,44 +211,26 @@ def run_progressive(
 
         # Diverse sample
         subset = diverse_sample(all_train, n)
-        scale_results = {"n": n, "epochs": epochs, "n_actual": len(subset)}
+        ner_dir = str(models_dir / f"ner_n{n}")
+        re_dir = str(models_dir / f"re_n{n}")
 
-        if "A" in approaches:
-            _log(f"\n--- Approach A: Single Generative Model (N={n}) ---")
-            a_dir = str(models_dir / f"flan_t5_n{n}")
-            t0 = time.time()
-            train_approach_a(subset, a_dir, epochs)
-            train_time = time.time() - t0
-            _log(f"[Approach A] Training done in {train_time:.1f}s. Starting evaluation...")
+        t0 = time.time()
+        metrics = train_and_evaluate(subset, test_data, ner_dir, re_dir, epochs)
+        total_time = time.time() - t0
 
-            t0 = time.time()
-            a_metrics = evaluate_approach_a(a_dir, test_data)
-            eval_time = time.time() - t0
+        metrics["total_time_sec"] = round(total_time, 1)
+        e2e = metrics["end_to_end"]
+        ner = metrics["ner_only"]
+        _log(f"\n>>> N={n} DONE: e2e_entity_f1={e2e['entity_f1']:.4f}, "
+             f"e2e_rel_f1={e2e['relationship_f1']:.4f}, ner_f1={ner['entity_f1']:.4f}, "
+             f"total={total_time:.0f}s")
 
-            a_metrics["train_time_sec"] = round(train_time, 1)
-            a_metrics["eval_time_sec"] = round(eval_time, 1)
-            scale_results["approach_a"] = a_metrics
-            _log(f"\n>>> Approach A DONE (N={n}): entity_f1={a_metrics['entity_f1']:.4f}, "
-                 f"rel_f1={a_metrics['relationship_f1']:.4f}, parse_rate={a_metrics['json_parse_rate']:.4f}, "
-                 f"train={train_time:.0f}s, eval={eval_time:.0f}s")
-
-        if "B" in approaches:
-            _log(f"\n--- Approach B: Split Pipeline (N={n}) ---")
-            ner_dir = str(models_dir / f"ner_n{n}")
-            re_dir = str(models_dir / f"re_n{n}")
-            t0 = time.time()
-            b_metrics = train_and_evaluate_approach_b(subset, test_data, ner_dir, re_dir, epochs)
-            total_time = time.time() - t0
-
-            b_metrics["total_time_sec"] = round(total_time, 1)
-            scale_results["approach_b"] = b_metrics
-            e2e = b_metrics["end_to_end"]
-            ner = b_metrics["ner_only"]
-            _log(f"\n>>> Approach B DONE (N={n}): e2e_entity_f1={e2e['entity_f1']:.4f}, "
-                 f"e2e_rel_f1={e2e['relationship_f1']:.4f}, ner_f1={ner['entity_f1']:.4f}, "
-                 f"total={total_time:.0f}s")
-
-        results[f"n{n}"] = scale_results
+        results[f"n{n}"] = {
+            "n": n,
+            "epochs": epochs,
+            "n_actual": len(subset),
+            **metrics,
+        }
 
     # Save results
     results_path = models_dir / "progressive_results.json"
@@ -481,23 +247,29 @@ def run_progressive(
 def _print_summary(results: dict):
     """Print a comparison summary table."""
     print("\n" + "=" * 80)
-    print("PROGRESSIVE TRAINING RESULTS")
+    print("PROGRESSIVE TRAINING RESULTS — Split Pipeline (BioLinkBERT-large NER + RE)")
     print("=" * 80)
-    print(f"{'N':>5} | {'Approach A':^40} | {'Approach B (E2E)':^30}")
-    print(f"{'':>5} | {'Ent F1':>8} {'Rel F1':>8} {'Dir Acc':>8} {'Parse%':>8} | {'Ent F1':>8} {'Rel F1':>8} {'NER F1':>8}")
+    print(f"{'N':>5} | {'NER F1':>8} {'E2E Ent F1':>11} {'E2E Rel F1':>11} {'RE(gold) F1':>12} {'Dir Acc':>8} | {'Time':>6}")
     print("-" * 80)
 
     for key in sorted(results.keys(), key=lambda k: results[k]["n"]):
         r = results[key]
         n = r["n"]
 
-        a = r.get("approach_a", {})
-        b_e2e = r.get("approach_b", {}).get("end_to_end", {})
-        b_ner = r.get("approach_b", {}).get("ner_only", {})
+        ner = r.get("ner_only", {})
+        e2e = r.get("end_to_end", {})
+        re_gold = r.get("re_with_gold_entities", {})
 
-        a_str = f"{a.get('entity_f1', '-'):>8} {a.get('relationship_f1', '-'):>8} {a.get('direction_accuracy', '-'):>8} {a.get('json_parse_rate', '-'):>8}"
-        b_str = f"{b_e2e.get('entity_f1', '-'):>8} {b_e2e.get('relationship_f1', '-'):>8} {b_ner.get('entity_f1', '-'):>8}"
+        def fmt(v):
+            return f"{v:.4f}" if isinstance(v, (int, float)) else "-"
 
-        print(f"{n:>5} | {a_str} | {b_str}")
+        time_str = f"{r.get('total_time_sec', 0):.0f}s"
+
+        print(f"{n:>5} | {fmt(ner.get('entity_f1', '-')):>8} "
+              f"{fmt(e2e.get('entity_f1', '-')):>11} "
+              f"{fmt(e2e.get('relationship_f1', '-')):>11} "
+              f"{fmt(re_gold.get('relationship_f1', '-')):>12} "
+              f"{fmt(e2e.get('direction_accuracy', '-')):>8} | "
+              f"{time_str:>6}")
 
     print("=" * 80, flush=True)
