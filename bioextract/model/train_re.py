@@ -42,6 +42,24 @@ ID2DIR = {i: d for i, d in enumerate(DIR_TYPES)}
 ENTITY_TYPES = ["GENE", "DISEASE", "CHEMICAL", "VARIANT", "ORGANISM", "CELL_TYPE"]
 
 
+def _find_marker_positions(
+    input_ids_batch: list[list[int]],
+    subj_marker_ids: set[int],
+    obj_marker_ids: set[int],
+) -> tuple[list[int], list[int]]:
+    """Find the token positions of subject and object entity markers in each sequence.
+
+    Falls back to position 0 (CLS) if a marker was truncated out.
+    """
+    subj_starts, obj_starts = [], []
+    for ids in input_ids_batch:
+        s = next((i for i, t in enumerate(ids) if t in subj_marker_ids), 0)
+        o = next((i for i, t in enumerate(ids) if t in obj_marker_ids), 0)
+        subj_starts.append(s)
+        obj_starts.append(o)
+    return subj_starts, obj_starts
+
+
 def _special_tokens() -> list[str]:
     """Typed entity marker special tokens to add to tokenizer."""
     tokens = []
@@ -158,11 +176,16 @@ def _build_pairs(
 
 
 class REPairClassifier(nn.Module):
-    """BioLinkBERT-large pair classifier with relation type + direction heads.
+    """BERT pair classifier with typed entity marker representations.
 
-    Takes [CLS] representation from encoder with typed entity markers,
-    classifies into relation type (7) and direction (3).
-    Direction loss only computed for positive (non-no_relation) pairs.
+    Input: [CLS] entity-marked text [SEP]
+    Representation: concat([CLS], [S:TYPE] token, [O:TYPE] token) → 3 × hidden
+    This outperforms CLS-only because the entity marker tokens attend specifically
+    to their entity's local context rather than the whole abstract.
+
+    Two classification heads:
+      - Relation type (7 classes: no_relation + 6 gold types)
+      - Direction (3 classes: positive, negative, neutral) — trained on positives only
     """
 
     def __init__(self, bert_model, neg_ratio: int = 3):
@@ -170,8 +193,9 @@ class REPairClassifier(nn.Module):
         self.bert = bert_model
         hidden = bert_model.config.hidden_size
         self.dropout = nn.Dropout(bert_model.config.hidden_dropout_prob)
-        self.rel_head = nn.Linear(hidden, len(REL_TYPES))
-        self.dir_head = nn.Linear(hidden, len(DIR_TYPES))
+        # Classifier input: [CLS; S_marker_repr; O_marker_repr] = 3 × hidden
+        self.rel_head = nn.Linear(3 * hidden, len(REL_TYPES))
+        self.dir_head = nn.Linear(3 * hidden, len(DIR_TYPES))
         # Class weights: upweight positive classes to counteract neg_ratio imbalance
         n_pos_types = len(REL_TYPES) - 1
         rel_weights = torch.ones(len(REL_TYPES))
@@ -180,13 +204,26 @@ class REPairClassifier(nn.Module):
 
     def forward(
         self, input_ids, attention_mask=None,
-        rel_labels=None, dir_labels=None, **kwargs,
+        rel_labels=None, dir_labels=None,
+        subj_start=None, obj_start=None, **kwargs,
     ):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        cls = self.dropout(outputs.last_hidden_state[:, 0])
+        hidden = outputs.last_hidden_state  # [batch, seq, hidden]
 
-        rel_logits = self.rel_head(cls)
-        dir_logits = self.dir_head(cls)
+        cls = hidden[:, 0]  # [batch, hidden]
+
+        if subj_start is not None and obj_start is not None:
+            batch_idx = torch.arange(hidden.size(0), device=hidden.device)
+            subj_repr = hidden[batch_idx, subj_start]   # [batch, hidden]
+            obj_repr = hidden[batch_idx, obj_start]     # [batch, hidden]
+        else:
+            subj_repr = cls
+            obj_repr = cls
+
+        combined = self.dropout(torch.cat([cls, subj_repr, obj_repr], dim=-1))
+
+        rel_logits = self.rel_head(combined)
+        dir_logits = self.dir_head(combined)
 
         loss = None
         if rel_labels is not None:
@@ -266,11 +303,24 @@ def train_re(
         padding="max_length", return_tensors=None,
     )
 
+    # Locate entity marker token positions for entity-span representations
+    all_subj_ids = set(
+        tokenizer.convert_tokens_to_ids(f"[S:{t}]") for t in ENTITY_TYPES
+    )
+    all_obj_ids = set(
+        tokenizer.convert_tokens_to_ids(f"[O:{t}]") for t in ENTITY_TYPES
+    )
+    subj_starts, obj_starts = _find_marker_positions(
+        encodings["input_ids"], all_subj_ids, all_obj_ids
+    )
+
     ds = Dataset.from_dict({
         "input_ids": encodings["input_ids"],
         "attention_mask": encodings["attention_mask"],
         "rel_labels": rel_labels,
         "dir_labels": dir_labels,
+        "subj_start": subj_starts,
+        "obj_start": obj_starts,
     })
 
     # Train/eval split
@@ -395,6 +445,14 @@ def predict_relationships(
     if not pair_texts:
         return []
 
+    # Pre-compute marker token ID sets for this tokenizer
+    all_subj_ids = set(
+        tokenizer.convert_tokens_to_ids(f"[S:{t}]") for t in ENTITY_TYPES
+    )
+    all_obj_ids = set(
+        tokenizer.convert_tokens_to_ids(f"[O:{t}]") for t in ENTITY_TYPES
+    )
+
     # Batch inference (batch_size=64 to avoid OOM with many entities)
     all_rel_preds = []
     all_dir_preds = []
@@ -406,7 +464,12 @@ def predict_relationships(
             batch_texts, max_length=max_length, truncation=True,
             padding=True, return_tensors="pt",
         )
+        subj_starts, obj_starts = _find_marker_positions(
+            encodings["input_ids"].tolist(), all_subj_ids, all_obj_ids
+        )
         encodings = {k: v.to(device) for k, v in encodings.items()}
+        encodings["subj_start"] = torch.tensor(subj_starts, device=device)
+        encodings["obj_start"] = torch.tensor(obj_starts, device=device)
 
         with torch.no_grad():
             outputs = model(**encodings)
