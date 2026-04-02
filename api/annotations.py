@@ -217,50 +217,6 @@ def get_abstract(abstract_id: int, annotator_name: str = Query(None)):
     return {"abstract": abstract, "existing_annotation": existing}
 
 
-@router.post("/{abstract_id}")
-def save_annotation(abstract_id: int, body: AnnotationSave):
-    conn = get_db()
-    ensure_tables(conn)
-    if not conn.execute(
-        "SELECT id FROM annotation_abstracts WHERE id = ?", (abstract_id,)
-    ).fetchone():
-        conn.close()
-        raise HTTPException(status_code=404, detail="Abstract not found")
-    now = datetime.now(timezone.utc).isoformat()
-    existing = conn.execute(
-        "SELECT id FROM annotations WHERE abstract_id = ? AND annotator_name = ?",
-        (abstract_id, body.annotator_name),
-    ).fetchone()
-    if existing:
-        conn.execute(
-            "UPDATE annotations SET entities=?, relationships=?, phase=?, updated_at=? WHERE id=?",
-            (
-                json.dumps(body.entities),
-                json.dumps(body.relationships),
-                body.phase,
-                now,
-                existing["id"],
-            ),
-        )
-    else:
-        conn.execute(
-            "INSERT INTO annotations "
-            "(abstract_id, annotator_name, entities, relationships, phase, updated_at) "
-            "VALUES (?,?,?,?,?,?)",
-            (
-                abstract_id,
-                body.annotator_name,
-                json.dumps(body.entities),
-                json.dumps(body.relationships),
-                body.phase,
-                now,
-            ),
-        )
-    conn.commit()
-    conn.close()
-    return {"status": "saved"}
-
-
 class FetchRequest(BaseModel):
     keywords: str
     max_results: int = 10
@@ -299,7 +255,9 @@ def fetch_abstracts(body: FetchRequest):
 
             if not new_pmids:
                 conn.close()
-                return {"added": 0, "message": "No new abstracts found"}
+                msg = (f"All {len(pmids)} results already in queue"
+                       if pmids else "No PubMed results found")
+                return {"added": 0, "message": msg}
 
             time.sleep(0.3)
 
@@ -344,6 +302,50 @@ def fetch_abstracts(body: FetchRequest):
 
     conn.close()
     return {"added": len(added), "ids": added}
+
+
+@router.post("/{abstract_id}")
+def save_annotation(abstract_id: int, body: AnnotationSave):
+    conn = get_db()
+    ensure_tables(conn)
+    if not conn.execute(
+        "SELECT id FROM annotation_abstracts WHERE id = ?", (abstract_id,)
+    ).fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Abstract not found")
+    now = datetime.now(timezone.utc).isoformat()
+    existing = conn.execute(
+        "SELECT id FROM annotations WHERE abstract_id = ? AND annotator_name = ?",
+        (abstract_id, body.annotator_name),
+    ).fetchone()
+    if existing:
+        conn.execute(
+            "UPDATE annotations SET entities=?, relationships=?, phase=?, updated_at=? WHERE id=?",
+            (
+                json.dumps(body.entities),
+                json.dumps(body.relationships),
+                body.phase,
+                now,
+                existing["id"],
+            ),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO annotations "
+            "(abstract_id, annotator_name, entities, relationships, phase, updated_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                abstract_id,
+                body.annotator_name,
+                json.dumps(body.entities),
+                json.dumps(body.relationships),
+                body.phase,
+                now,
+            ),
+        )
+    conn.commit()
+    conn.close()
+    return {"status": "saved"}
 
 
 def _result_to_prelabels(result) -> dict:

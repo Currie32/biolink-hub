@@ -513,12 +513,20 @@ function AnnotationDashboard() {
         body: JSON.stringify({ keywords: fetchKeywords, max_results: fetchCount }),
       })
       const data = await res.json()
-      setFetchMsg(data.added > 0 ? `Added ${data.added} abstract${data.added !== 1 ? 's' : ''}` : 'No new abstracts found')
-      if (data.added > 0) {
+      if (!res.ok) {
+        const detail = Array.isArray(data.detail)
+          ? data.detail.map(e => e.msg).join('; ')
+          : (data.detail || `Error ${res.status}`)
+        console.error('Fetch error:', data)
+        setFetchMsg(detail)
+      } else if (data.added > 0) {
+        setFetchMsg(`Added ${data.added} abstract${data.added !== 1 ? 's' : ''}`)
         fetch('/api/annotate/queue').then(r => r.json()).then(setQueue).catch(() => {})
+      } else {
+        setFetchMsg(data.message || 'No new abstracts found')
       }
     } catch {
-      setFetchMsg('Fetch failed')
+      setFetchMsg('Fetch failed — check API server')
     } finally {
       setFetching(false)
     }
