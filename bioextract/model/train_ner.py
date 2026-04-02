@@ -23,7 +23,7 @@ import torch
 
 logger = logging.getLogger(__name__)
 
-BIOLINKBERT = "michiyasunaga/BioLinkBERT-large"
+BIOLINKBERT = "dmis-lab/biobert-base-cased-v1.2"
 
 WINDOW_SIZE = 512
 WINDOW_STRIDE = 256

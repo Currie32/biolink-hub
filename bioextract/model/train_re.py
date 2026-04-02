@@ -23,7 +23,7 @@ import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
-BIOLINKBERT = "michiyasunaga/BioLinkBERT-large"
+BIOLINKBERT = "dmis-lab/biobert-base-cased-v1.2"
 
 # Relation types (index 0 = no_relation for negative pairs)
 REL_TYPES = [
