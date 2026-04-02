@@ -364,11 +364,16 @@ def _result_to_prelabels(result) -> dict:
 
 def _parse_pubmed_xml(xml_text: str) -> list[dict]:
     """Parse PubMed XML response into list of {pmid, abstract} dicts."""
+    import html
     import re
+
+    def clean(text: str) -> str:
+        """Strip XML tags and decode HTML entities (e.g. &#x3b5; → ε)."""
+        return html.unescape(re.sub(r'<[^>]+>', '', text)).strip()
 
     def extract_tag(xml, tag):
         m = re.search(rf'<{tag}[^>]*>(.*?)</{tag}>', xml, re.DOTALL)
-        return re.sub(r'<[^>]+>', '', m.group(1)).strip() if m else ""
+        return clean(m.group(1)) if m else ""
 
     papers = []
     for article in xml_text.split("<PubmedArticle>")[1:]:
@@ -379,7 +384,7 @@ def _parse_pubmed_xml(xml_text: str) -> list[dict]:
         if not abstract:
             # Try structured abstract (multiple AbstractText elements)
             parts = re.findall(r'<AbstractText[^>]*>(.*?)</AbstractText>', article, re.DOTALL)
-            abstract = " ".join(re.sub(r'<[^>]+>', '', p).strip() for p in parts)
+            abstract = " ".join(clean(p) for p in parts)
         if abstract:
             papers.append({"pmid": pmid, "abstract": abstract})
 
