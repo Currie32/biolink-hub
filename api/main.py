@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+from api.annotations import router as annotation_router
+
 DB_PATH = Path(__file__).parent.parent / "biolink.db"
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
 
@@ -20,6 +22,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(annotation_router)
 
 
 def get_db():
