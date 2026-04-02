@@ -165,13 +165,18 @@ class REPairClassifier(nn.Module):
     Direction loss only computed for positive (non-no_relation) pairs.
     """
 
-    def __init__(self, bert_model):
+    def __init__(self, bert_model, neg_ratio: int = 3):
         super().__init__()
         self.bert = bert_model
         hidden = bert_model.config.hidden_size
         self.dropout = nn.Dropout(bert_model.config.hidden_dropout_prob)
         self.rel_head = nn.Linear(hidden, len(REL_TYPES))
         self.dir_head = nn.Linear(hidden, len(DIR_TYPES))
+        # Class weights: upweight positive classes to counteract neg_ratio imbalance
+        n_pos_types = len(REL_TYPES) - 1
+        rel_weights = torch.ones(len(REL_TYPES))
+        rel_weights[1:] = float(neg_ratio * n_pos_types)
+        self.register_buffer("rel_class_weights", rel_weights)
 
     def forward(
         self, input_ids, attention_mask=None,
@@ -185,13 +190,15 @@ class REPairClassifier(nn.Module):
 
         loss = None
         if rel_labels is not None:
-            ce = nn.CrossEntropyLoss()
+            ce = nn.CrossEntropyLoss(weight=self.rel_class_weights)
             loss = ce(rel_logits, rel_labels)
             # Direction loss only for positive relations (not no_relation)
             if dir_labels is not None:
                 pos_mask = rel_labels != 0
                 if pos_mask.any():
-                    loss = loss + ce(dir_logits[pos_mask], dir_labels[pos_mask])
+                    loss = loss + nn.CrossEntropyLoss()(
+                        dir_logits[pos_mask], dir_labels[pos_mask]
+                    )
 
         return {"loss": loss, "rel_logits": rel_logits, "dir_logits": dir_logits}
 
@@ -245,7 +252,7 @@ def train_re(
     bert = AutoModel.from_pretrained(BIOLINKBERT)
     bert.resize_token_embeddings(len(tokenizer))
 
-    model = REPairClassifier(bert)
+    model = REPairClassifier(bert, neg_ratio=neg_ratio)
     n_params = sum(p.numel() for p in model.parameters())
     print(f"  [RE] Model params: {n_params:,}", flush=True)
 
@@ -329,7 +336,7 @@ def load_re_model(model_dir: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     bert = AutoModel.from_pretrained(model_dir)
-    model = REPairClassifier(bert)
+    model = REPairClassifier(bert, neg_ratio=1)  # weights unused at inference
 
     heads_path = Path(model_dir) / "re_heads.pt"
     if heads_path.exists():
