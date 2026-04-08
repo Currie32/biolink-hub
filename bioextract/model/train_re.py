@@ -192,14 +192,14 @@ class REPairClassifier(nn.Module):
         super().__init__()
         self.bert = bert_model
         hidden = bert_model.config.hidden_size
-        self.dropout = nn.Dropout(bert_model.config.hidden_dropout_prob)
+        self.dropout = nn.Dropout(0.3)  # higher dropout for small-data regularization
         # Classifier input: [CLS; S_marker_repr; O_marker_repr] = 3 × hidden
         self.rel_head = nn.Linear(3 * hidden, len(REL_TYPES))
         self.dir_head = nn.Linear(3 * hidden, len(DIR_TYPES))
-        # Class weights: upweight positive classes to counteract neg_ratio imbalance
-        n_pos_types = len(REL_TYPES) - 1
+        # Class weights: upweight positive classes by neg_ratio to balance pos/neg pairs.
+        # Do NOT multiply by n_pos_types — that over-corrects and causes overfitting.
         rel_weights = torch.ones(len(REL_TYPES))
-        rel_weights[1:] = float(neg_ratio * n_pos_types)
+        rel_weights[1:] = float(neg_ratio)
         self.register_buffer("rel_class_weights", rel_weights)
 
     def forward(
@@ -342,7 +342,7 @@ def train_re(
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=grad_accum,
         learning_rate=learning_rate,
-        weight_decay=0.01,
+        weight_decay=0.1,
         warmup_ratio=0.1,
         eval_strategy="epoch" if eval_ds else "no",
         save_strategy="epoch" if eval_ds else "no",
