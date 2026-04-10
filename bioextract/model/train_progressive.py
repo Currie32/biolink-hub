@@ -172,17 +172,20 @@ def run_progressive(
     train_path: str | None = None,
     test_path: str | None = None,
     models_dir: str | None = None,
+    skip_eval: bool = False,
 ):
     """Run the full progressive training experiment.
 
-    Trains the split pipeline (BioLinkBERT-large NER + RE pair classifier) at each
-    scale and evaluates on the test set.
+    Trains the split pipeline (NER + RE pair classifier) at each scale and
+    optionally evaluates on the test set.
 
     Args:
-        scales: List of training sizes to evaluate (default: [1, 10, 100, 400]).
+        scales: List of training sizes (default: [1, 10, 100, 400]).
         train_path: Path to training JSONL.
         test_path: Path to test JSONL.
         models_dir: Base directory for saving models.
+        skip_eval: If True, skip evaluation after training (faster — use the
+            'Try the model' cells below to test manually).
     """
     scales = scales or list(SCALES.keys())
     train_path = train_path or str(TRAIN_PATH)
@@ -193,13 +196,15 @@ def run_progressive(
     # Load data
     _log(f"Loading training data from {train_path}")
     all_train = load_data(train_path)
-    _log(f"Loading test data from {test_path}")
-    test_data = load_data(test_path)
-
-    # Filter to gold label set
     all_train = filter_to_gold_labels(all_train)
-    test_data = filter_to_gold_labels(test_data)
-    _log(f"Data loaded: {len(all_train)} train, {len(test_data)} test (filtered to gold labels)")
+
+    if not skip_eval:
+        _log(f"Loading test data from {test_path}")
+        test_data = filter_to_gold_labels(load_data(test_path))
+        _log(f"Data loaded: {len(all_train)} train, {len(test_data)} test")
+    else:
+        test_data = []
+        _log(f"Data loaded: {len(all_train)} train (eval skipped)")
 
     results = {}
 
@@ -209,12 +214,24 @@ def run_progressive(
         _log(f"SCALE N={n}, epochs={epochs}")
         _log(f"{'=' * 60}")
 
-        # Diverse sample
         subset = diverse_sample(all_train, n)
         ner_dir = str(models_dir / f"ner_n{n}")
         re_dir = str(models_dir / f"re_n{n}")
 
         t0 = time.time()
+
+        if skip_eval:
+            from .train_ner import train_ner
+            from .train_re import train_re
+            _log(f"  Training NER ({len(subset)} examples, {epochs} epochs)...")
+            train_ner(subset, ner_dir, epochs=epochs)
+            _log(f"  Training RE ({len(subset)} examples, {epochs} epochs)...")
+            train_re(subset, re_dir, epochs=epochs)
+            total_time = time.time() - t0
+            _log(f"\n>>> N={n} DONE in {total_time:.0f}s (eval skipped)")
+            results[f"n{n}"] = {"n": n, "total_time_sec": round(total_time, 1)}
+            continue
+
         metrics = train_and_evaluate(subset, test_data, ner_dir, re_dir, epochs)
         total_time = time.time() - t0
 
